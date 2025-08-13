@@ -183,11 +183,11 @@ export default function UsersList() {
                                 <SelectItem value="Business">Business</SelectItem>
                             </SelectContent>
                         </Select>
-
+{/* 
                         <div>
                             <label className="mb-1 block text-sm font-medium">Amount (USD)</label>
                             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                        </div>
+                        </div> */}
 
                         <div>
                             <label className="mb-1 block text-sm font-medium">Monitors Limit</label>
