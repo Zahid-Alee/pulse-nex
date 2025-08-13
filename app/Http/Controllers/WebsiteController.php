@@ -27,6 +27,11 @@ class WebsiteController extends Controller
         $days = 30;
         $stats = $this->uptimeMonitor->getAllWebsitesStats($websites, $days);
 
+        if ($user->is_admin == 1) {
+            return redirect()->route('admin.dashboard')->with('success', 'Website added successfully');
+            // Admin-specific logic
+        }
+
         return Inertia::render('dashboard', [
             'websites' => $websites,
             'stats' => $stats

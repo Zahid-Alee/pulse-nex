@@ -7,7 +7,6 @@ use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
-    // return Inertia::render('welcome');
     return view('home');
 })->name('home');
 

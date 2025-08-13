@@ -89,15 +89,8 @@ class UserController extends Controller
 
     public function createView()
     {
-        $user = Auth::user();
-        $subscription = Subscription::where('user_id', $user->id)->first();
-
-        return Inertia::render('websites/CreateWebsite', [
-            'subscription' => $subscription,
-            'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : [],
-        ]);
+        return Inertia::render('users/create');
     }
-
 
     public function editView(User $user)
     {
@@ -118,7 +111,7 @@ class UserController extends Controller
         $validated['password'] = bcrypt($validated['password']);
         $validated['is_admin'] = $request->input('is_admin', false);
 
-        User::create($validated);
+        $user = User::create($validated);
 
         $users = User::orderBy('name')->get()->map(function ($user) {
             return [
@@ -128,6 +121,15 @@ class UserController extends Controller
                 'is_admin' => $user->is_admin,
             ];
         });
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_name' => 'Free',
+            'monitors_limit' => 1,
+            'check_interval' => 5,
+            'starts_at' => now(),
+            'ends_at' => now()->addMonth(),
+        ]);
 
         return Inertia::render('users/list', [
             'users' => $users,
@@ -161,14 +163,21 @@ class UserController extends Controller
     {
         $user->delete();
 
-        $users = User::orderBy('name')->get()->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'is_admin' => $user->is_admin,
-            ];
-        });
+        $users = User::orderBy('name')
+            ->with('subscription')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id'             => $user->id,
+                    'name'           => $user->name,
+                    'email'          => $user->email,
+                    'is_admin'       => $user->is_admin,
+                    'plan_name'      => optional($user->subscription)->plan_name ?? 'No Plan',
+                    'amount'         => optional($user->subscription)->amount ?? 0,
+                    'monitors_limit' => optional($user->subscription)->monitors_limit ?? 1,
+                    'check_interval' => optional($user->subscription)->check_interval ?? 5,
+                ];
+            });
 
         return Inertia::render('users/list', [
             'users' => $users,

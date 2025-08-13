@@ -47,7 +47,7 @@
 
 <main class="pricing-section">
     <section class="pricing-hero">
-        <div class="container">
+        <div style="padding: 40px;" class="container">
             <h1>Choose Your Perfect Plan</h1>
             <p>Select the plan that suits your website monitoring needs. Upgrade or downgrade anytime.</p>
         </div>
@@ -181,6 +181,7 @@
         --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
+
 
     /* Pricing Hero */
     .pricing-hero {
@@ -343,8 +344,9 @@
         width: 1.25rem;
         height: 1.25rem;
         color: var(--success-color);
-        margin-right: 0.75rem;
+        /* margin-right: 0.75rem; */
         flex-shrink: 0;
+        margin: 10px 10px;
     }
 
     /* Plan Action Buttons */

@@ -1,8 +1,16 @@
 @include('includes.header')
 
 <main class="payment-section">
+    <section class="pricing-hero">
+        <div style="padding: 40px;" class="container">
+            <h1>Checkout Confirmation</h1>
+            <p>Thank you for choosing your plan. Below is the summary of your purchase:</p>
+        </div>
+    </section>
     <div class="payment-container">
         <!-- Left Column: Plan Details -->
+
+
         <div class="plan-details">
             <h2 class="plan-title">{{ $planName }}</h2>
             <p class="plan-price">${{ number_format($amount, 2) }} <span>/month</span></p>
@@ -91,13 +99,69 @@
 
 <style>
     /* Base styles */
+
+
+    :root {
+        --primary-color: #3b82f6;
+        --primary-hover: #2563eb;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+        --white: #ffffff;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+
+    /* Pricing Hero */
+    .pricing-hero {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);
+        color: var(--white);
+        padding: 6rem 0 4rem;
+        text-align: center;
+    }
+
+    .pricing-hero h1 {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        letter-spacing: -0.025em;
+    }
+
+    .pricing-hero p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    /* Pricing Container */
+    .pricing-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
     * {
         box-sizing: border-box;
     }
 
     body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
         margin: 0;
         padding: 0;
     }
