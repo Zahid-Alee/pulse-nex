@@ -29,7 +29,7 @@
                     </ul>
                 </div>
                 <div class="feature-image">
-                    <img src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg"
+                    <img src="/assets/images/screenshot1.png"
                         alt="Uptime Monitoring Dashboard">
                 </div>
             </div>
@@ -50,7 +50,7 @@
                     </ul>
                 </div>
                 <div class="feature-image">
-                    <img src="https://images.pexels.com/photos/48727/pexels-photo-48727.jpeg"
+                    <img src="/assets/images/screenshot.png"
                         alt="Response Time Analytics">
                 </div>
             </div>
