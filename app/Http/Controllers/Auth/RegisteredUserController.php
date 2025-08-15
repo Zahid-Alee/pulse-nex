@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeEmail;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -10,12 +11,27 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
+
+    protected function sendWelcomeMail(User $user)
+    {
+        try {
+            // The line that sends the email
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+            // If it fails, log the error message
+            Log::error("Failed to send welcome email to {$user->email}. Error: " . $e->getMessage());
+        }
+    }
     /**
      * Show the registration page (public).
      */
@@ -52,6 +68,8 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
+        $this->sendWelcomeMail($user);
+
         Auth::login($user);
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -64,7 +82,7 @@ class RegisteredUserController extends Controller
      */
     public function index(): Response
     {
-        $users = User::paginate(15); // Paginate as needed
+        $users = User::paginate(15);
 
         return Inertia::render('admin/users/Index', [
             'users' => $users,

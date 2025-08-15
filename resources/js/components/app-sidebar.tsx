@@ -16,7 +16,7 @@ export function AppSidebar() {
         mainNavItems.push({
             title: 'Admin Dashboard',
             href: '/admin/dashboard',
-            icon: PanelTop,
+            icon: LayoutGrid,
         });
     } else {
         mainNavItems.push({

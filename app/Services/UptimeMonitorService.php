@@ -7,6 +7,11 @@ use App\Models\UptimeCheck;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Mail\WebsiteDownEmail;
+use Illuminate\Support\Facades\Mail;
+
+
+
 
 class UptimeMonitorService
 {
@@ -54,6 +59,9 @@ class UptimeMonitorService
             } else {
                 $status = 'down';
                 $errorMessage = "HTTP {$statusCode}";
+
+                Mail::to($website->user->email)
+                    ->send(new WebsiteDownEmail($website, $errorMessage));
             }
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             $errorMessage = 'Connection timeout or refused';
@@ -63,7 +71,7 @@ class UptimeMonitorService
             $errorMessage = 'Unknown error: ' . $e->getMessage();
         }
 
-      
+
 
         // Update website status and last checked time
         $website->update([
@@ -120,132 +128,131 @@ class UptimeMonitorService
 
 
     // Helper to reduce chart points
-protected function reduceChartPoints($data, $maxPoints = 15)
-{
-    $count = $data->count();
-    if ($count <= $maxPoints) {
-        return $data->values();
+    protected function reduceChartPoints($data, $maxPoints = 15)
+    {
+        $count = $data->count();
+        if ($count <= $maxPoints) {
+            return $data->values();
+        }
+
+        $step = max(1, floor($count / $maxPoints));
+        return $data->values()->filter(function ($item, $index) use ($step) {
+            return $index % $step === 0;
+        })->values();
     }
 
-    $step = max(1, floor($count / $maxPoints));
-    return $data->values()->filter(function ($item, $index) use ($step) {
-        return $index % $step === 0;
-    })->values();
-}
-
-public function getWebsiteStats(Website $website, int $days = 30): array
-{
-    $checks = $website->recentChecks($days)->get();
-
-    if ($checks->isEmpty()) {
-        return [
-            'total_checks' => 0,
-            'uptime_percentage' => null,
-            'average_response_time' => null,
-            'total_downtime_minutes' => 0,
-            'incidents' => 0,
-            'hourly_data' => []
-        ];
-    }
-
-    $totalChecks = $checks->count();
-    $upChecks = $checks->where('status', 'up')->count();
-    $uptimePercentage = round(($upChecks / $totalChecks) * 100, 2);
-
-    $averageResponseTime = $checks
-        ->where('status', 'up')
-        ->whereNotNull('response_time')
-        ->avg('response_time');
-
-    $incidents = $this->calculateIncidents($checks);
-    $totalDowntime = $this->calculateTotalDowntime($checks, $website->check_interval);
-
-    // group by hour
-    $hourlyData = $checks->groupBy(function ($check) {
-        return \Carbon\Carbon::parse($check->checked_at)->format('Y-m-d H:00');
-    })->map(function ($group, $hour) {
-        $total = $group->count();
-        $up = $group->where('status', 'up')->count();
-        return [
-            'hour' => $hour,
-            'uptime_percentage' => round(($up / $total) * 100, 2)
-        ];
-    })->sortKeys()->values();
-
-    // ✅ Reduce chart points
-    $hourlyData = $this->reduceChartPoints($hourlyData);
-
-    return [
-        'total_checks' => $totalChecks,
-        'uptime_percentage' => $uptimePercentage,
-        'average_response_time' => $averageResponseTime ? round($averageResponseTime, 2) : null,
-        'total_downtime_minutes' => $totalDowntime,
-        'incidents' => $incidents,
-        'hourly_data' => $hourlyData
-    ];
-}
-
-public function getAllWebsitesStats($websites, int $days = 30): array
-{
-    if ($websites->isEmpty()) {
-        return [
-            'total_websites' => 0,
-            'uptime_percentage' => null,
-            'average_response_time' => null,
-            'total_downtime_minutes' => 0,
-            'incidents' => 0,
-            'hourly_data' => []
-        ];
-    }
-
-    $totalChecks = 0;
-    $upChecks = 0;
-    $totalResponseTime = 0;
-    $totalDowntime = 0;
-    $totalIncidents = 0;
-    $hourlyData = collect();
-
-    foreach ($websites as $website) {
+    public function getWebsiteStats(Website $website, int $days = 30): array
+    {
         $checks = $website->recentChecks($days)->get();
 
         if ($checks->isEmpty()) {
-            continue;
+            return [
+                'total_checks' => 0,
+                'uptime_percentage' => null,
+                'average_response_time' => null,
+                'total_downtime_minutes' => 0,
+                'incidents' => 0,
+                'hourly_data' => []
+            ];
         }
 
-        $totalChecks += $checks->count();
-        $upChecks += $checks->where('status', 'up')->count();
-        $totalResponseTime += $checks->where('status', 'up')->whereNotNull('response_time')->avg('response_time') ?? 0;
-        $totalDowntime += $this->calculateTotalDowntime($checks, $website->check_interval);
-        $totalIncidents += $this->calculateIncidents($checks);
+        $totalChecks = $checks->count();
+        $upChecks = $checks->where('status', 'up')->count();
+        $uptimePercentage = round(($upChecks / $totalChecks) * 100, 2);
 
-        $checks->groupBy(function ($check) {
+        $averageResponseTime = $checks
+            ->where('status', 'up')
+            ->whereNotNull('response_time')
+            ->avg('response_time');
+
+        $incidents = $this->calculateIncidents($checks);
+        $totalDowntime = $this->calculateTotalDowntime($checks, $website->check_interval);
+
+        // group by hour
+        $hourlyData = $checks->groupBy(function ($check) {
             return \Carbon\Carbon::parse($check->checked_at)->format('Y-m-d H:00');
-        })->each(function ($group, $hour) use (&$hourlyData) {
+        })->map(function ($group, $hour) {
             $total = $group->count();
             $up = $group->where('status', 'up')->count();
-            $uptimePct = round(($up / $total) * 100, 2);
-
-            $hourlyData->push([
+            return [
                 'hour' => $hour,
-                'uptime_percentage' => $uptimePct
-            ]);
-        });
+                'uptime_percentage' => round(($up / $total) * 100, 2)
+            ];
+        })->sortKeys()->values();
+
+        // ✅ Reduce chart points
+        $hourlyData = $this->reduceChartPoints($hourlyData);
+
+        return [
+            'total_checks' => $totalChecks,
+            'uptime_percentage' => $uptimePercentage,
+            'average_response_time' => $averageResponseTime ? round($averageResponseTime, 2) : null,
+            'total_downtime_minutes' => $totalDowntime,
+            'incidents' => $incidents,
+            'hourly_data' => $hourlyData
+        ];
     }
 
-    $uptimePercentage = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 2) : null;
-    $avgResponseTime = $totalChecks > 0 ? round($totalResponseTime / $websites->count(), 2) : null;
+    public function getAllWebsitesStats($websites, int $days = 30): array
+    {
+        if ($websites->isEmpty()) {
+            return [
+                'total_websites' => 0,
+                'uptime_percentage' => null,
+                'average_response_time' => null,
+                'total_downtime_minutes' => 0,
+                'incidents' => 0,
+                'hourly_data' => []
+            ];
+        }
 
-    // ✅ Reduce chart points
-    $hourlyData = $this->reduceChartPoints($hourlyData->sortBy('hour')->values());
+        $totalChecks = 0;
+        $upChecks = 0;
+        $totalResponseTime = 0;
+        $totalDowntime = 0;
+        $totalIncidents = 0;
+        $hourlyData = collect();
 
-    return [
-        'total_websites' => $websites->count(),
-        'uptime_percentage' => $uptimePercentage,
-        'average_response_time' => $avgResponseTime,
-        'total_downtime_minutes' => $totalDowntime,
-        'incidents' => $totalIncidents,
-        'hourly_data' => $hourlyData
-    ];
-}
+        foreach ($websites as $website) {
+            $checks = $website->recentChecks($days)->get();
 
+            if ($checks->isEmpty()) {
+                continue;
+            }
+
+            $totalChecks += $checks->count();
+            $upChecks += $checks->where('status', 'up')->count();
+            $totalResponseTime += $checks->where('status', 'up')->whereNotNull('response_time')->avg('response_time') ?? 0;
+            $totalDowntime += $this->calculateTotalDowntime($checks, $website->check_interval);
+            $totalIncidents += $this->calculateIncidents($checks);
+
+            $checks->groupBy(function ($check) {
+                return \Carbon\Carbon::parse($check->checked_at)->format('Y-m-d H:00');
+            })->each(function ($group, $hour) use (&$hourlyData) {
+                $total = $group->count();
+                $up = $group->where('status', 'up')->count();
+                $uptimePct = round(($up / $total) * 100, 2);
+
+                $hourlyData->push([
+                    'hour' => $hour,
+                    'uptime_percentage' => $uptimePct
+                ]);
+            });
+        }
+
+        $uptimePercentage = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 2) : null;
+        $avgResponseTime = $totalChecks > 0 ? round($totalResponseTime / $websites->count(), 2) : null;
+
+        // ✅ Reduce chart points
+        $hourlyData = $this->reduceChartPoints($hourlyData->sortBy('hour')->values());
+
+        return [
+            'total_websites' => $websites->count(),
+            'uptime_percentage' => $uptimePercentage,
+            'average_response_time' => $avgResponseTime,
+            'total_downtime_minutes' => $totalDowntime,
+            'incidents' => $totalIncidents,
+            'hourly_data' => $hourlyData
+        ];
+    }
 }

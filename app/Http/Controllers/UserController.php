@@ -3,14 +3,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SubscriptionUpdated;
+use App\Mail\WelcomeEmail;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Website;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+
+
+    protected function sendSubscriptionMail(Subscription $subscription)
+    {
+        try {
+            $subscription->load('user');
+            Mail::to($subscription->user->email)->send(new SubscriptionUpdated($subscription));
+        } catch (\Exception $e) {
+            Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
+        }
+    }
+
+    protected function sendWelcomeMail(User $user)
+    {
+        try {
+            // The line that sends the email
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+        } catch (\Exception $e) {
+            // If it fails, log the error message
+            Log::error("Failed to send welcome email to {$user->email}. Error: " . $e->getMessage());
+        }
+    }
+
     public function view()
     {
         $users = User::orderBy('name')
@@ -122,7 +149,7 @@ class UserController extends Controller
             ];
         });
 
-        Subscription::create([
+        $subscription = Subscription::create([
             'user_id' => $user->id,
             'plan_name' => 'Free',
             'monitors_limit' => 1,
@@ -130,6 +157,10 @@ class UserController extends Controller
             'starts_at' => now(),
             'ends_at' => now()->addMonth(),
         ]);
+
+        $this->sendWelcomeMail($user);
+        $this->sendSubscriptionMail($subscription);
+
 
         return Inertia::render('users/list', [
             'users' => $users,
@@ -193,7 +224,7 @@ class UserController extends Controller
             'check_interval'  => 'required|integer|min:1',
         ]);
 
-        Subscription::updateOrCreate(
+        $subscription = Subscription::updateOrCreate(
             ['user_id' => $user->id],
             [
                 'plan_name'      => $validated['plan_name'],
@@ -204,6 +235,8 @@ class UserController extends Controller
                 'ends_at'        => now()->addMonth(),
             ]
         );
+
+        $this->sendSubscriptionMail($subscription); // <-- ADD THIS LINE
 
         return back()->with('success', 'User plan updated successfully.');
     }

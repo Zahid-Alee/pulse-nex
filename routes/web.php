@@ -4,7 +4,21 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\WebsiteController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymentController;
+use App\Mail\WelcomeEmail;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+
+// Route::get('/test-mail', function () {
+//     $user = User::first();
+//     try {
+//         Mail::to('pruxappomaddi-4731@yopmail.com')->send(new WelcomeEmail($user));
+//         return 'Email sent successfully!';
+//     } catch (\Exception $e) {
+//         return 'Error: ' . $e->getMessage();
+//     }
+// });
+
 
 Route::get('/', function () {
     return view('home');

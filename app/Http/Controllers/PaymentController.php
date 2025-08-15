@@ -2,14 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SubscriptionUpdated;
 use App\Models\Payment;
 use App\Models\Subscription;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 
 class PaymentController extends Controller
 {
+
+
+    protected function sendSubscriptionMail(Subscription $subscription)
+    {
+        try {
+            $subscription->load('user');
+            Mail::to($subscription->user->email)->send(new SubscriptionUpdated($subscription));
+        } catch (\Exception $e) {
+            Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
+        }
+    }
     public function create(Request $request)
     {
         $request->validate([
@@ -40,7 +54,7 @@ class PaymentController extends Controller
             );
 
             // Save or update subscription
-            Subscription::updateOrCreate(
+            $subscription = Subscription::updateOrCreate(
                 ['user_id' => $userId],
                 [
                     'plan_name'      => $request->plan_name,
@@ -50,6 +64,8 @@ class PaymentController extends Controller
                     'ends_at'        => now()->addMonth(),
                 ]
             );
+
+            $this->sendSubscriptionMail($subscription);
 
             return redirect()->route('dashboard')
                 ->with('success', 'Free plan activated successfully.');
@@ -109,7 +125,7 @@ class PaymentController extends Controller
         $payment->update(['status' => 'succeeded']);
 
         // Save or update subscription
-        Subscription::updateOrCreate(
+        $subscription = Subscription::updateOrCreate(
             ['user_id' => $payment->user_id],
             [
                 'plan_name'      => $payment->plan_name,
@@ -119,6 +135,8 @@ class PaymentController extends Controller
                 'ends_at'        => now()->addMonth(),
             ]
         );
+
+        $this->sendSubscriptionMail($subscription);
 
         return redirect()
             ->route('dashboard')
