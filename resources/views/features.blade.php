@@ -1,5 +1,5 @@
 @php
-    $page_title = 'Features - PulseNex';
+    $page_title = 'Features - Pulse Nex';
     $active_page = 'features';
 @endphp
 
@@ -9,8 +9,8 @@
     <!-- Hero Section -->
     <section class="features-hero">
         <div class="container">
-            <h1>Powerful Website Monitoring Features</h1>
-            <p>Everything you need to keep your websites running smoothly</p>
+            <h1>Powerful Website Uptime Monitoring</h1>
+            <p>Track your websites’ uptime, downtime, and performance — all in one simple dashboard with instant alerts.</p>
         </div>
     </section>
 
@@ -19,14 +19,13 @@
         <div class="container">
             <div class="feature-content">
                 <div class="feature-text">
-                    <h2>Uptime Monitoring</h2>
-                    <p>Monitor your websites 24/7 with intervals as low as 15 seconds. Get instant notifications when
-                        your site goes down.</p>
+                    <h2>Flexible Website Monitoring</h2>
+                    <p>Monitor your websites 24/7 according to your plan limits. Get notified instantly whenever your site goes down.</p>
                     <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> Real-time monitoring</li>
-                        <li><i class="fas fa-check"></i> Instant downtime alerts</li>
-                        <li><i class="fas fa-check"></i> Detailed uptime reports</li>
-                        <li><i class="fas fa-check"></i> Historical data tracking</li>
+                        <li><i class="fas fa-check"></i> Continuous uptime checks</li>
+                        <li><i class="fas fa-check"></i> Instant downtime alerts via email</li>
+                        <li><i class="fas fa-check"></i> Average uptime summaries</li>
+                        <li><i class="fas fa-check"></i> Complete downtime history</li>
                     </ul>
                 </div>
                 <div class="feature-image">
@@ -37,40 +36,17 @@
         </div>
     </section>
 
-    <section class="feature-section alternate" id="ssl">
+    <section class="feature-section alternate" id="response">
         <div class="container">
             <div class="feature-content reverse">
                 <div class="feature-text">
-                    <h2>SSL Certificate Monitoring</h2>
-                    <p>Never let your SSL certificates expire. Get advance notifications and ensure your website remains
-                        secure.</p>
-                    <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> SSL expiration tracking</li>
-                        <li><i class="fas fa-check"></i> Certificate validation</li>
-                        <li><i class="fas fa-check"></i> Early expiration warnings</li>
-                        <li><i class="fas fa-check"></i> SSL health monitoring</li>
-                    </ul>
-                </div>
-                <div class="feature-image">
-                    <img src="https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg"
-                        alt="SSL Certificate Monitoring">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="feature-section" id="response">
-        <div class="container">
-            <div class="feature-content">
-                <div class="feature-text">
                     <h2>Response Time Tracking</h2>
-                    <p>Monitor your website's performance with detailed response time analytics and alerts for slow
-                        loading times.</p>
+                    <p>Measure how fast your website responds and identify performance issues before they affect users.</p>
                     <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> Performance monitoring</li>
-                        <li><i class="fas fa-check"></i> Response time alerts</li>
-                        <li><i class="fas fa-check"></i> Trend analysis</li>
-                        <li><i class="fas fa-check"></i> Global response tracking</li>
+                        <li><i class="fas fa-check"></i> Real-time response time checks</li>
+                        <li><i class="fas fa-check"></i> Alerts for slow response times</li>
+                        <li><i class="fas fa-check"></i> Trend & performance analysis</li>
+                        <li><i class="fas fa-check"></i> Data from multiple locations</li>
                     </ul>
                 </div>
                 <div class="feature-image">
@@ -81,51 +57,30 @@
         </div>
     </section>
 
-    <section class="feature-section alternate" id="domain">
-        <div class="container">
-            <div class="feature-content reverse">
-                <div class="feature-text">
-                    <h2>Domain Information Monitoring</h2>
-                    <p>Keep track of your domain registrations, DNS records, and WHOIS information all in one place.</p>
-                    <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> Domain expiration alerts</li>
-                        <li><i class="fas fa-check"></i> DNS record monitoring</li>
-                        <li><i class="fas fa-check"></i> WHOIS tracking</li>
-                        <li><i class="fas fa-check"></i> Registrar information</li>
-                    </ul>
-                </div>
-                <div class="feature-image">
-                    <img src="https://images.pexels.com/photos/1591060/pexels-photo-1591060.jpeg"
-                        alt="Domain Monitoring">
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Feature Grid -->
     <section class="additional-features">
         <div class="container">
-            <h2>More Great Features</h2>
+            <h2>More Essential Tools</h2>
             <div class="features-grid">
                 <div class="feature-card">
                     <i class="fas fa-bell"></i>
                     <h3>Instant Alerts</h3>
-                    <p>Get notified immediately when issues are detected with your websites.</p>
+                    <p>Receive email notifications the moment downtime is detected so you can act fast.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-chart-line"></i>
-                    <h3>Detailed Reports</h3>
-                    <p>Access comprehensive reports and analytics about your website's performance.</p>
+                    <h3>Detailed Analytics</h3>
+                    <p>View uptime percentages, downtime events, and average response times across all your websites.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-mobile-alt"></i>
-                    <h3>Mobile Friendly</h3>
-                    <p>Monitor your websites on the go with our responsive dashboard.</p>
+                    <h3>Dedicated Dashboard</h3>
+                    <p>Manage and monitor all your websites from one simple, mobile-friendly interface.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-clock"></i>
                     <h3>Historical Data</h3>
-                    <p>Track your website's performance over time with historical data storage.</p>
+                    <p>Review past performance to identify trends and recurring issues.</p>
                 </div>
             </div>
         </div>
@@ -134,12 +89,13 @@
     <!-- CTA Section -->
     <section class="cta">
         <div class="container">
-            <h2>Ready to Start Monitoring Your Websites?</h2>
-            <p>Join thousands of businesses who trust PulseNex for their website monitoring needs.</p>
-            <a href="signup.php" class="btn btn-primary">Get Started for Free</a>
+            <h2>Start Monitoring Your Websites Today</h2>
+            <p>Join Pulse Nex and keep your websites online, fast, and reliable — with real-time alerts and in-depth analytics.</p>
+            <a href="{{ route('register') }}" class="btn btn-primary">Get Started for Free</a>
         </div>
     </section>
 </main>
+
 
 <style>
     /* Features Page Specific Styles */

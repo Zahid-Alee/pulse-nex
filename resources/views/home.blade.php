@@ -1,5 +1,5 @@
 @php
-  $page_title = "PulseNex - Website Monitoring Service";
+  $page_title = "Pulse Nex - Flexible Website Uptime & Performance Monitoring";
   $active_page = "home";
 @endphp
 
@@ -10,15 +10,15 @@
   <section class="hero">
     <div class="container">
       <div class="hero-content">
-        <h1>Monitor Your Websites 24/7</h1>
-        <p>Get instant alerts when your websites go down, SSL certificates expire, or domain issues arise.</p>
+        <h1>Keep Your Websites Online, All the Time</h1>
+        <p>Pulse Nex gives you real-time monitoring, instant downtime alerts, and powerful analytics, all from one dashboard.</p>
         <div class="hero-buttons">
-          <a href="signup.php" class="btn btn-primary">Start Monitoring Now</a>
-          <a href="pricing.php" class="btn btn-secondary">View Pricing</a>
+          <a href="{{ route('register') }}" class="btn btn-primary">Start Monitoring Now</a>
+          <a href="{{ route('pricing') }}" class="btn btn-secondary">View Plans</a>
         </div>
       </div>
       <div class="hero-image">
-        <img src="assets/images/dashboard-preview.jpeg" alt="PulseNex Dashboard Preview">
+        <img src="{{ asset('assets/images/dashboard-preview.jpeg') }}" alt="Pulse Nex Dashboard Preview">
       </div>
     </div>
   </section>
@@ -26,27 +26,27 @@
   <!-- Features Section -->
   <section class="features">
     <div class="container">
-      <h2>Comprehensive Monitoring Features</h2>
+      <h2>Everything You Need to Monitor Your Websites</h2>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon uptime-icon"></div>
-          <h3>Uptime Monitoring</h3>
-          <p>Track your website's availability with configurable check intervals starting from 15 seconds.</p>
+          <h3>Flexible Uptime Monitoring</h3>
+          <p>Check your websites as often as every 15 seconds, with limits based on your plan.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon ssl-icon"></div>
-          <h3>SSL Certificate Monitoring</h3>
-          <p>Stay ahead of SSL certificate expirations and get alerted before they cause problems.</p>
+          <h3>SSL & Domain Expiry Alerts</h3>
+          <p>Never miss a renewal date — get notified before SSL certificates or domains expire.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon response-icon"></div>
-          <h3>Response Time Tracking</h3>
-          <p>Monitor how quickly your websites respond and identify performance issues early.</p>
+          <h3>Response Time Analytics</h3>
+          <p>Measure and track your websites’ speed to ensure the best visitor experience.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon domain-icon"></div>
-          <h3>Domain Information</h3>
-          <p>Keep track of your domain's WHOIS information, DNS records, and registration status.</p>
+          <h3>Website & DNS Insights</h3>
+          <p>Monitor DNS records, WHOIS data, and domain status for complete visibility.</p>
         </div>
       </div>
     </div>
@@ -55,27 +55,27 @@
   <!-- How It Works -->
   <section class="how-it-works">
     <div class="container">
-      <h2>How PulseNex Works</h2>
+      <h2>How Pulse Nex Works</h2>
       <div class="steps">
         <div class="step">
           <div class="step-number">1</div>
           <h3>Add Your Websites</h3>
-          <p>Simply enter the URLs of the websites you want to monitor.</p>
+          <p>Enter the URLs of the websites you want to monitor in your dashboard.</p>
         </div>
         <div class="step">
           <div class="step-number">2</div>
-          <h3>Choose Monitoring Options</h3>
-          <p>Select what to monitor: uptime, SSL, response time, domain info.</p>
+          <h3>Set Your Monitoring Options</h3>
+          <p>Choose uptime checks, SSL monitoring, response time tracking, and more.</p>
         </div>
         <div class="step">
           <div class="step-number">3</div>
-          <h3>Get Notified</h3>
-          <p>Receive instant alerts via email when issues are detected.</p>
+          <h3>Get Instant Alerts</h3>
+          <p>Receive email notifications the moment your website goes down.</p>
         </div>
         <div class="step">
           <div class="step-number">4</div>
-          <h3>View Detailed Reports</h3>
-          <p>Access comprehensive reports and analytics on your dashboard.</p>
+          <h3>Analyze Performance</h3>
+          <p>View uptime history, average response times, and trends from detailed graphs.</p>
         </div>
       </div>
     </div>
@@ -84,12 +84,12 @@
   <!-- Testimonials -->
   <section class="testimonials">
     <div class="container">
-      <h2>What Our Customers Say</h2>
+      <h2>What Our Users Say</h2>
       <div class="testimonial-slider">
         <div class="testimonial">
-          <p>"PulseNex has saved our business countless hours of downtime. The instant notifications have allowed us to resolve issues before most of our customers even notice."</p>
+          <p>"Pulse Nex has helped us catch outages before our customers even noticed. It’s a must-have for any serious website owner."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-1.jpg" alt="Sarah Johnson">
+            <img src="{{ asset('assets/images/testimonial-1.jpg') }}" alt="Sarah Johnson">
             <div>
               <h4>Sarah Johnson</h4>
               <p>CTO, TechStart Inc.</p>
@@ -97,9 +97,9 @@
           </div>
         </div>
         <div class="testimonial">
-          <p>"The SSL certificate monitoring feature alone is worth the subscription. No more last-minute panics about expiring certificates!"</p>
+          <p>"The analytics are amazing. We can track uptime across all our websites from a single dashboard."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-2.jpg" alt="Michael Chen">
+            <img src="{{ asset('assets/images/testimonial-2.jpg') }}" alt="Michael Chen">
             <div>
               <h4>Michael Chen</h4>
               <p>Web Developer, DigitalEdge</p>
@@ -107,9 +107,9 @@
           </div>
         </div>
         <div class="testimonial">
-          <p>"Since switching to PulseNex, we've had complete peace of mind knowing our site is being monitored 24/7—no more surprise outages."</p>
+          <p>"Flexible plans mean we only pay for what we need. The alerts are fast and reliable."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-3.jpg" alt="Michael Chen">
+            <img src="{{ asset('assets/images/testimonial-3.jpg') }}" alt="Elen Carter">
             <div>
               <h4>Elen Carter</h4>
               <p>IT Operations Manager, BrightWare Solutions</p>
@@ -117,28 +117,29 @@
           </div>
         </div>
         <div class="testimonial">
-          <p>"We love how easy it is to set up and customize monitoring. PulseNex has become an essential part of our infrastructure stack."</p>
+          <p>"We’ve reduced downtime incidents by over 90% since switching to Pulse Nex."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-4.jpg" alt="Michael Chen">
+            <img src="{{ asset('assets/images/testimonial-4.jpg') }}" alt="Jason Patel">
             <div>
-              <h4>Jason Patel,</h4>
+              <h4>Jason Patel</h4>
               <p>CTO, MarketNest Agency</p>
             </div>
           </div>
         </div>
         <div class="testimonial">
-          <p>"PulseNex pays for itself every month—just one prevented downtime incident covers the cost many times over."</p>
+          <p>"One prevented downtime pays for the subscription many times over. Highly recommended."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-5.jpg" alt="Michael Chen">
+            <img src="{{ asset('assets/images/testimonial-5.jpg') }}" alt="Brad Morris">
             <div>
               <h4>Brad Morris</h4>
               <p>DevOps Engineer, Cloudfinity</p>
             </div>
           </div>
-        </div><div class="testimonial">
-          <p>"Our support team is now more proactive thanks to PulseNex's real-time alerts. We fix problems before they become customer complaints"</p>
+        </div>
+        <div class="testimonial">
+          <p>"Real-time alerts have transformed how our support team handles outages — we’re always one step ahead."</p>
           <div class="testimonial-author">
-            <img src="assets/images/testimonial-6.jpg" alt="Michael Chen">
+            <img src="{{ asset('assets/images/testimonial-6.jpg') }}" alt="Sandra Kim">
             <div>
               <h4>Sandra Kim</h4>
               <p>Director of E-commerce, NovaRetail</p>
@@ -152,9 +153,9 @@
   <!-- CTA Section -->
   <section class="cta">
     <div class="container">
-      <h2>Ready to Keep Your Websites Running Smoothly?</h2>
-      <p>Join thousands of businesses who trust PulseNex for their website monitoring needs.</p>
-      <a href="signup.php" class="btn btn-primary">Get Started for Free</a>
+      <h2>Monitor Smarter with Pulse Nex</h2>
+      <p>Join businesses worldwide who rely on Pulse Nex for real-time monitoring and actionable insights.</p>
+      <a href="{{ route('register') }}" class="btn btn-primary">Get Started for Free</a>
     </div>
   </section>
 </main>

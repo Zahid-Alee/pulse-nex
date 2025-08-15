@@ -21,10 +21,10 @@ export default function ViewWebsite() {
         >
             <Head title={website.name} />
             <div className="space-y-6 p-4">
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold">{website.name}</h1>
                     <Button onClick={checkNow}>Check Now</Button>
-                </div>
+                </div> */}
 
                 <WebsiteStatsChart data={stats.hourly_data} uptimePercentage={stats.uptime_percentage} />
                 <WebsiteHistoryTable history={history.data} />

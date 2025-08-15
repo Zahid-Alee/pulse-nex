@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="/assets/css/responsive.css">
   <link rel="icon" href="/assets/images/favicon.ico" type="image/x-icon">
   <!-- Font Awesome for icons -->
-  {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> --}}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Google Fonts -->
-  {{-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> --}}
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <meta name="csrf-token" content="{{ csrf_token() }}">
 
 </head>
