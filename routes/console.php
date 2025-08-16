@@ -10,14 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 
-Artisan::command('websites:check', function () {
-    // The logic of the command itself is inside your CheckWebsites class
-})->describe('Check websites uptime based on their intervals');
-
-// Schedule the command using the Scheduler instance
-app()->booted(function () {
-    $schedule = app(Schedule::class);
-
-    // Run every minute but your Website::needsCheck() scope should filter by interval
-    $schedule->command('websites:check')->everyMinute();
-});
+app(Schedule::class)->command('websites:check')->everyMinute();

@@ -3,32 +3,27 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\UptimeMonitorService;
+use App\Models\Website;
+use App\Jobs\CheckWebsiteJob;
 
 class CheckWebsites extends Command
 {
     protected $signature = 'websites:check';
-    protected $description = 'Check websites uptime based on their intervals';
-
-    protected UptimeMonitorService $monitor;
-
-    public function __construct(UptimeMonitorService $monitor)
-    {
-        parent::__construct();
-        $this->monitor = $monitor;
-    }
+    protected $description = 'Check all websites based on their interval';
 
     public function handle()
     {
-        $results = $this->monitor->checkAllWebsites();
+        $websites = Website::where('is_active', true)->get();
 
-        foreach ($results as $result) {
-            if ($result['status'] === 'error') {
-                $this->error("Website ID {$result['website_id']} error: {$result['message']}");
-            } else {
-                $this->info("Checked website {$result['website_name']} ({$result['website_url']}): {$result['status']}");
+        foreach ($websites as $website) {
+            if (!$website->last_checked_at || 
+                $website->last_checked_at->diffInSeconds(now()) >= $website->check_interval) 
+            {
+                dispatch(new CheckWebsiteJob($website));
+                $this->info("Checking {$website->url}");
             }
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }
