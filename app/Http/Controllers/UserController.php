@@ -158,8 +158,8 @@ class UserController extends Controller
             'ends_at' => now()->addMonth(),
         ]);
 
-        $this->sendWelcomeMail($user);
-        $this->sendSubscriptionMail($subscription);
+        // $this->sendWelcomeMail($user);
+        // $this->sendSubscriptionMail($subscription);
 
 
         return Inertia::render('users/list', [
@@ -236,7 +236,7 @@ class UserController extends Controller
             ]
         );
 
-        $this->sendSubscriptionMail($subscription); // <-- ADD THIS LINE
+        // $this->sendSubscriptionMail($subscription); // <-- ADD THIS LINE
 
         return back()->with('success', 'User plan updated successfully.');
     }
