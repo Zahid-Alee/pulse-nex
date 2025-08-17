@@ -10,9 +10,6 @@ use Carbon\Carbon;
 use App\Mail\WebsiteDownEmail;
 use Illuminate\Support\Facades\Mail;
 
-
-
-
 class UptimeMonitorService
 {
     public function checkAllWebsites(): array
@@ -23,89 +20,223 @@ class UptimeMonitorService
         Log::info("Starting website check. Total websites: " . $websites->count());
 
         foreach ($websites as $website) {
+            // Check if enough time has passed since last check
+            if (!$this->shouldCheckWebsite($website)) {
+                Log::info("Skipping website check - interval not reached", [
+                    'website_id' => $website->id,
+                    'last_checked_at' => $website->last_checked_at,
+                    'check_interval' => $website->check_interval,
+                    'next_check_time' => $this->getNextCheckTime($website)
+                ]);
+                continue;
+            }
+
             Log::info("Preparing to check website", [
-                'website_id'     => $website->id,
-                'url'            => $website->url ?? null, // if you have url column
+                'website_id' => $website->id,
+                'url' => $website->url ?? null,
                 'check_interval' => $website->check_interval,
-                'current_time'   => now()->toDateTimeString(),
+                'current_time' => now()->toDateTimeString(),
+                'last_checked_at' => $website->last_checked_at
             ]);
 
             try {
                 $result = $this->checkWebsite($website);
                 Log::info("Website checked successfully", [
                     'website_id' => $website->id,
-                    'status'     => $result['status'] ?? 'unknown',
+                    'status' => $result['status'] ?? 'unknown',
+                    'response_time' => $result['response_time'] ?? null,
+                    'status_code' => $result['status_code'] ?? null
                 ]);
                 $results[] = $result;
             } catch (\Exception $e) {
                 Log::error("Error checking website", [
                     'website_id' => $website->id,
-                    'message'    => $e->getMessage(),
-                    'trace'      => $e->getTraceAsString(),
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
                 $results[] = [
                     'website_id' => $website->id,
-                    'status'     => 'error',
-                    'message'    => $e->getMessage()
+                    'status' => 'error',
+                    'message' => $e->getMessage()
                 ];
             }
         }
 
         Log::info("Finished website checks");
-
         return $results;
     }
 
+    /**
+     * Check if enough time has passed since the last check
+     */
+    protected function shouldCheckWebsite(Website $website): bool
+    {
+        // If never checked before, check now
+        if (!$website->last_checked_at) {
+            return true;
+        }
+
+        // Get current time in UTC to ensure consistency
+        $now = Carbon::now('UTC');
+        $lastChecked = Carbon::parse($website->last_checked_at)->utc();
+
+        // Calculate time difference in seconds
+        $timeDifferenceSeconds = $now->diffInSeconds($lastChecked);
+
+        // Convert check_interval from minutes to seconds
+        $intervalSeconds = $website->check_interval;
+
+        Log::debug("Check interval calculation", [
+            'website_id' => $website->id,
+            'now_utc' => $now->toDateTimeString(),
+            'last_checked_utc' => $lastChecked->toDateTimeString(),
+            'time_difference_seconds' => $timeDifferenceSeconds,
+            'interval_seconds' => $intervalSeconds,
+            'should_check' => $timeDifferenceSeconds >= $intervalSeconds
+        ]);
+
+        return $timeDifferenceSeconds >= $intervalSeconds;
+    }
+
+    /**
+     * Get the next scheduled check time for debugging
+     */
+    protected function getNextCheckTime(Website $website): ?string
+    {
+        if (!$website->last_checked_at) {
+            return 'Now (never checked)';
+        }
+
+        $lastChecked = Carbon::parse($website->last_checked_at)->utc();
+        $nextCheck = $lastChecked->addMinutes($website->check_interval);
+
+        return $nextCheck->toDateTimeString() . ' UTC';
+    }
 
     public function checkWebsite(Website $website): array
     {
         $startTime = microtime(true);
-        $checkedAt = Carbon::now();
+        $checkedAt = Carbon::now('UTC'); // Ensure UTC timezone
         $status = 'down';
         $responseTime = null;
         $statusCode = null;
         $errorMessage = null;
 
+        Log::info("Starting website check", [
+            'website_id' => $website->id,
+            'url' => $website->url,
+            'timeout' => $website->timeout,
+            'checked_at_utc' => $checkedAt->toDateTimeString()
+        ]);
+
         try {
-            $response = Http::timeout($website->timeout)
+            // Add user agent and follow redirects for better compatibility
+            $response = Http::timeout($website->timeout ?? 30)
                 ->connectTimeout(10)
+                ->withHeaders([
+                    'User-Agent' => 'UptimeMonitor/1.0'
+                ])
+                ->withOptions([
+                    'verify' => false, // Skip SSL verification for self-signed certificates
+                    'allow_redirects' => true
+                ])
                 ->get($website->url);
 
             $endTime = microtime(true);
-            $responseTime = round(($endTime - $startTime) * 1000);
+            $responseTime = round(($endTime - $startTime) * 1000); // Response time in milliseconds
             $statusCode = $response->status();
 
-            if ($response->successful()) {
+            Log::info("HTTP response received", [
+                'website_id' => $website->id,
+                'status_code' => $statusCode,
+                'response_time_ms' => $responseTime,
+                'successful' => $response->successful()
+            ]);
+
+            // Consider 2xx and 3xx status codes as successful
+            if ($response->successful() || ($statusCode >= 300 && $statusCode < 400)) {
                 $status = 'up';
+                Log::info("Website is UP", [
+                    'website_id' => $website->id,
+                    'status_code' => $statusCode
+                ]);
             } else {
                 $status = 'down';
                 $errorMessage = "HTTP {$statusCode}";
+                Log::warning("Website is DOWN - HTTP error", [
+                    'website_id' => $website->id,
+                    'status_code' => $statusCode,
+                    'error_message' => $errorMessage
+                ]);
 
-                // Mail::to($website->user->email)
-                //     ->send(new WebsiteDownEmail($website, $errorMessage));
+                // Send email notification for down status
+                $this->handleDowntimeNotification($website, $errorMessage);
             }
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            $endTime = microtime(true);
+            $responseTime = round(($endTime - $startTime) * 1000);
             $errorMessage = 'Connection timeout or refused';
+            $status = 'down';
+
+            Log::warning("Website is DOWN - Connection error", [
+                'website_id' => $website->id,
+                'error_message' => $errorMessage,
+                'exception' => $e->getMessage()
+            ]);
+
+            $this->handleDowntimeNotification($website, $errorMessage);
         } catch (\Illuminate\Http\Client\RequestException $e) {
+            $endTime = microtime(true);
+            $responseTime = round(($endTime - $startTime) * 1000);
             $errorMessage = 'Request failed: ' . $e->getMessage();
+            $status = 'down';
+
+            Log::warning("Website is DOWN - Request error", [
+                'website_id' => $website->id,
+                'error_message' => $errorMessage
+            ]);
+
+            $this->handleDowntimeNotification($website, $errorMessage);
         } catch (\Exception $e) {
+            $endTime = microtime(true);
+            $responseTime = round(($endTime - $startTime) * 1000);
             $errorMessage = 'Unknown error: ' . $e->getMessage();
+            $status = 'down';
+
+            Log::error("Website is DOWN - Unknown error", [
+                'website_id' => $website->id,
+                'error_message' => $errorMessage,
+                'exception_trace' => $e->getTraceAsString()
+            ]);
+
+            $this->handleDowntimeNotification($website, $errorMessage);
         }
 
+        // Update website status and last checked time in UTC
         $website->update([
             'status' => $status,
             'last_checked_at' => $checkedAt
         ]);
 
+        // Clean up old checks periodically
         $this->cleanupOldChecks($website);
 
+        // Create uptime check record
         $uptimeCheck = UptimeCheck::create([
-            'website_id'    => $website->id,
-            'status'        => $status,
+            'website_id' => $website->id,
+            'status' => $status,
             'response_time' => $responseTime,
-            'status_code'   => $statusCode,
+            'status_code' => $statusCode,
             'error_message' => $errorMessage,
-            'checked_at'    => $checkedAt,
+            'checked_at' => $checkedAt,
+        ]);
+
+        Log::info("Website check completed", [
+            'website_id' => $website->id,
+            'final_status' => $status,
+            'response_time_ms' => $responseTime,
+            'status_code' => $statusCode,
+            'uptime_check_id' => $uptimeCheck->id
         ]);
 
         return [
@@ -120,13 +251,58 @@ class UptimeMonitorService
         ];
     }
 
+    /**
+     * Handle downtime notifications
+     */
+    protected function handleDowntimeNotification(Website $website, string $errorMessage): void
+    {
+        try {
+            // Only send email if website was previously up or this is the first down check
+            $lastCheck = UptimeCheck::where('website_id', $website->id)
+                ->latest('checked_at')
+                ->first();
+
+            if (!$lastCheck || $lastCheck->status === 'up') {
+                Log::info("Sending downtime notification", [
+                    'website_id' => $website->id,
+                    'user_email' => $website->user->email ?? 'N/A'
+                ]);
+
+                if ($website->user && $website->user->email) {
+                    Mail::to($website->user->email)
+                        ->send(new WebsiteDownEmail($website, $errorMessage));
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to send downtime notification", [
+                'website_id' => $website->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
     protected function cleanupOldChecks(Website $website): void
     {
-        $cutoffDate = Carbon::now()->subDays(90);
+        try {
+            $cutoffDate = Carbon::now('UTC')->subDays(90);
 
-        UptimeCheck::where('website_id', $website->id)
-            ->where('checked_at', '<', $cutoffDate)
-            ->delete();
+            $deletedCount = UptimeCheck::where('website_id', $website->id)
+                ->where('checked_at', '<', $cutoffDate)
+                ->delete();
+
+            if ($deletedCount > 0) {
+                Log::info("Cleaned up old uptime checks", [
+                    'website_id' => $website->id,
+                    'deleted_count' => $deletedCount,
+                    'cutoff_date' => $cutoffDate->toDateTimeString()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to cleanup old checks", [
+                'website_id' => $website->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     protected function calculateIncidents($checks): int
@@ -151,7 +327,6 @@ class UptimeMonitorService
         $downChecks = $checks->where('status', 'down')->count();
         return round(($downChecks * $checkInterval) / 60); // Convert to minutes
     }
-
 
     // Helper to reduce chart points
     protected function reduceChartPoints($data, $maxPoints = 15)
@@ -194,9 +369,9 @@ class UptimeMonitorService
         $incidents = $this->calculateIncidents($checks);
         $totalDowntime = $this->calculateTotalDowntime($checks, $website->check_interval);
 
-        // group by hour
+        // group by hour in UTC
         $hourlyData = $checks->groupBy(function ($check) {
-            return \Carbon\Carbon::parse($check->checked_at)->format('Y-m-d H:00');
+            return Carbon::parse($check->checked_at)->utc()->format('Y-m-d H:00');
         })->map(function ($group, $hour) {
             $total = $group->count();
             $up = $group->where('status', 'up')->count();
@@ -206,7 +381,7 @@ class UptimeMonitorService
             ];
         })->sortKeys()->values();
 
-        // ✅ Reduce chart points
+        // Reduce chart points
         $hourlyData = $this->reduceChartPoints($hourlyData);
 
         return [
@@ -253,7 +428,7 @@ class UptimeMonitorService
             $totalIncidents += $this->calculateIncidents($checks);
 
             $checks->groupBy(function ($check) {
-                return \Carbon\Carbon::parse($check->checked_at)->format('Y-m-d H:00');
+                return Carbon::parse($check->checked_at)->utc()->format('Y-m-d H:00');
             })->each(function ($group, $hour) use (&$hourlyData) {
                 $total = $group->count();
                 $up = $group->where('status', 'up')->count();
@@ -269,7 +444,7 @@ class UptimeMonitorService
         $uptimePercentage = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 2) : null;
         $avgResponseTime = $totalChecks > 0 ? round($totalResponseTime / $websites->count(), 2) : null;
 
-        // ✅ Reduce chart points
+        // Reduce chart points
         $hourlyData = $this->reduceChartPoints($hourlyData->sortBy('hour')->values());
 
         return [
