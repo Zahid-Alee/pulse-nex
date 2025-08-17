@@ -8,7 +8,7 @@ type WebsiteFormProps = {
     initialValues?: Partial<{
         name: string;
         url: string;
-        check_interval: number;
+        check_interval: number; // stored in seconds in DB
         timeout: number;
         is_active: boolean;
     }>;
@@ -16,22 +16,31 @@ type WebsiteFormProps = {
         plan_name: string;
         max_websites?: number;
         websites_count?: number;
-        check_interval?: number;
+        check_interval?: number; // in minutes (plan restriction)
     };
     onSubmit: (data: any) => void;
     submitting?: boolean;
 };
 
-export default function WebsiteForm({ initialValues = {}, subscription, onSubmit, submitting }: WebsiteFormProps) {
+export default function WebsiteForm({
+    initialValues = {},
+    subscription,
+    onSubmit,
+    submitting,
+}: WebsiteFormProps) {
     const { props } = usePage<{ errors?: Record<string, string[]> }>();
     const errors = props.errors || {};
 
-    console.log('subscription', subscription);
+    // Subscription min allowed (in minutes)
+    const minAllowedMinutes = subscription?.check_interval ?? 1;
 
     const [form, setForm] = React.useState({
         name: initialValues.name || '',
         url: initialValues.url || '',
-        check_interval: initialValues.check_interval || 60,
+        // Convert initial check_interval (seconds → minutes for display)
+        check_interval: initialValues.check_interval
+            ? Math.floor(initialValues.check_interval / 60)
+            : minAllowedMinutes,
         timeout: initialValues.timeout || 5,
         is_active: initialValues.is_active ?? true,
     });
@@ -43,20 +52,33 @@ export default function WebsiteForm({ initialValues = {}, subscription, onSubmit
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Subscription validation logic before submitting
-        if (subscription?.max_websites && subscription.websites_count !== undefined) {
-            if (subscription.websites_count >= subscription.max_websites) {
-                alert(`Your current plan (${subscription.plan_name}) allows a maximum of ${subscription.max_websites} websites.`);
-                return;
-            }
-        }
-
-        if (subscription?.check_interval && form.check_interval < subscription.check_interval) {
-            alert(`Your plan requires a minimum check interval of ${subscription.check_interval} seconds.`);
+        // Validate website limit
+        if (
+            subscription?.max_websites &&
+            subscription.websites_count !== undefined &&
+            subscription.websites_count >= subscription.max_websites
+        ) {
+            alert(
+                `Your current plan (${subscription.plan_name}) allows a maximum of ${subscription.max_websites} websites.`
+            );
             return;
         }
 
-        onSubmit(form);
+        // Validate minimum check interval (in minutes)
+        if (form.check_interval < minAllowedMinutes) {
+            alert(
+                `Your plan requires a minimum check interval of ${minAllowedMinutes} minutes.`
+            );
+            return;
+        }
+
+        // Convert back to seconds before submit
+        const payload = {
+            ...form,
+            check_interval: form.check_interval * 60,
+        };
+
+        onSubmit(payload);
     };
 
     return (
@@ -71,7 +93,9 @@ export default function WebsiteForm({ initialValues = {}, subscription, onSubmit
                     required
                     className={errors.name ? 'border-red-500' : ''}
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name[0]}</p>}
+                {errors.name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.name[0]}</p>
+                )}
             </div>
 
             {/* URL */}
@@ -85,24 +109,37 @@ export default function WebsiteForm({ initialValues = {}, subscription, onSubmit
                     required
                     className={errors.url ? 'border-red-500' : ''}
                 />
-                {errors.url && <p className="mt-1 text-sm text-red-600">{errors.url[0]}</p>}
+                {errors.url && (
+                    <p className="mt-1 text-sm text-red-600">{errors.url[0]}</p>
+                )}
             </div>
 
             {/* Check Interval */}
             <div>
-                <Label htmlFor="check_interval">Check Interval (seconds)</Label>
+                <Label htmlFor="check_interval">Check Interval (minutes)</Label>
                 <Input
                     id="check_interval"
                     type="number"
-                    min={subscription?.check_interval || 60}
-                    max={3600}
+                    min={minAllowedMinutes}
+                    max={60} // up to 1 hour in minutes
                     value={form.check_interval}
-                    onChange={(e) => handleChange('check_interval', parseInt(e.target.value))}
+                    onChange={(e) =>
+                        handleChange(
+                            'check_interval',
+                            parseInt(e.target.value) || 0
+                        )
+                    }
                     className={errors.check_interval ? 'border-red-500' : ''}
                 />
-                {errors.check_interval && <p className="mt-1 text-sm text-red-600">{errors.check_interval[0]}</p>}
+                {errors.check_interval && (
+                    <p className="mt-1 text-sm text-red-600">
+                        {errors.check_interval[0]}
+                    </p>
+                )}
                 {subscription?.check_interval && (
-                    <p className="mt-1 text-xs text-gray-500">Minimum allowed by your plan: {subscription.check_interval} seconds</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                        Minimum allowed by your plan: {subscription.check_interval} minutes
+                    </p>
                 )}
             </div>
 
@@ -115,18 +152,31 @@ export default function WebsiteForm({ initialValues = {}, subscription, onSubmit
                     min={5}
                     max={120}
                     value={form.timeout}
-                    onChange={(e) => handleChange('timeout', parseInt(e.target.value))}
+                    onChange={(e) =>
+                        handleChange('timeout', parseInt(e.target.value))
+                    }
                     className={errors.timeout ? 'border-red-500' : ''}
                 />
-                {errors.timeout && <p className="mt-1 text-sm text-red-600">{errors.timeout[0]}</p>}
+                {errors.timeout && (
+                    <p className="mt-1 text-sm text-red-600">
+                        {errors.timeout[0]}
+                    </p>
+                )}
             </div>
 
             {/* Active Checkbox */}
             <div className="flex items-center gap-2">
-                <input type="checkbox" checked={form.is_active} onChange={(e) => handleChange('is_active', e.target.checked)} />
+                <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(e) =>
+                        handleChange('is_active', e.target.checked)
+                    }
+                />
                 <Label>Active</Label>
             </div>
 
+            {/* Subscription Info */}
             {subscription && (
                 <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                     <p>
@@ -134,7 +184,8 @@ export default function WebsiteForm({ initialValues = {}, subscription, onSubmit
                     </p>
                     {subscription.max_websites && (
                         <p>
-                            Websites: {subscription.websites_count}/{subscription.max_websites}
+                            Websites: {subscription.websites_count}/
+                            {subscription.max_websites}
                         </p>
                     )}
                 </div>

@@ -20,21 +20,42 @@ class UptimeMonitorService
         $results = [];
         $websites = Website::needsCheck()->get();
 
+        Log::info("Starting website check. Total websites: " . $websites->count());
+
         foreach ($websites as $website) {
+            Log::info("Preparing to check website", [
+                'website_id'     => $website->id,
+                'url'            => $website->url ?? null, // if you have url column
+                'check_interval' => $website->check_interval,
+                'current_time'   => now()->toDateTimeString(),
+            ]);
+
             try {
-                $results[] = $this->checkWebsite($website);
+                $result = $this->checkWebsite($website);
+                Log::info("Website checked successfully", [
+                    'website_id' => $website->id,
+                    'status'     => $result['status'] ?? 'unknown',
+                ]);
+                $results[] = $result;
             } catch (\Exception $e) {
-                Log::error("Error checking website {$website->id}: " . $e->getMessage());
+                Log::error("Error checking website", [
+                    'website_id' => $website->id,
+                    'message'    => $e->getMessage(),
+                    'trace'      => $e->getTraceAsString(),
+                ]);
                 $results[] = [
                     'website_id' => $website->id,
-                    'status' => 'error',
-                    'message' => $e->getMessage()
+                    'status'     => 'error',
+                    'message'    => $e->getMessage()
                 ];
             }
         }
 
+        Log::info("Finished website checks");
+
         return $results;
     }
+
 
     public function checkWebsite(Website $website): array
     {
@@ -51,7 +72,7 @@ class UptimeMonitorService
                 ->get($website->url);
 
             $endTime = microtime(true);
-            $responseTime = round(($endTime - $startTime) * 1000); // Convert to milliseconds
+            $responseTime = round(($endTime - $startTime) * 1000);
             $statusCode = $response->status();
 
             if ($response->successful()) {
@@ -60,8 +81,8 @@ class UptimeMonitorService
                 $status = 'down';
                 $errorMessage = "HTTP {$statusCode}";
 
-                Mail::to($website->user->email)
-                    ->send(new WebsiteDownEmail($website, $errorMessage));
+                // Mail::to($website->user->email)
+                //     ->send(new WebsiteDownEmail($website, $errorMessage));
             }
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             $errorMessage = 'Connection timeout or refused';
@@ -71,16 +92,21 @@ class UptimeMonitorService
             $errorMessage = 'Unknown error: ' . $e->getMessage();
         }
 
-
-
-        // Update website status and last checked time
         $website->update([
             'status' => $status,
             'last_checked_at' => $checkedAt
         ]);
 
-        // Clean up old records (keep only last 90 days)
         $this->cleanupOldChecks($website);
+
+        $uptimeCheck = UptimeCheck::create([
+            'website_id'    => $website->id,
+            'status'        => $status,
+            'response_time' => $responseTime,
+            'status_code'   => $statusCode,
+            'error_message' => $errorMessage,
+            'checked_at'    => $checkedAt,
+        ]);
 
         return [
             'website_id' => $website->id,

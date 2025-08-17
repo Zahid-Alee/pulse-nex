@@ -40,7 +40,7 @@ class Website extends Model
         return $this->hasMany(UptimeCheck::class);
     }
 
-    public function recentChecks($days = 30): HasMany
+    public function recentChecks(int $days = 30)
     {
         return $this->uptimeChecks()
             ->where('checked_at', '>=', Carbon::now()->subDays($days))
@@ -91,20 +91,13 @@ class Website extends Model
         return $query->where('is_active', true);
     }
 
-    // public function scopeNeedsCheck($query)
-    // {
-    //     return $query->active()
-    //         ->where(function ($q) {
-    //             $q->whereNull('last_checked_at')
-    //                 ->orWhereRaw('last_checked_at <= NOW() - INTERVAL check_interval SECOND');
-    //         });
-    // }
-
     public function scopeNeedsCheck($query)
     {
-        return $query->where(function ($q) {
-            $q->whereNull('last_checked_at')
-                ->orWhereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, NOW()) >= check_interval');
-        });
+        return $query->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('last_checked_at')
+                  ->orWhereRaw('last_checked_at <= NOW() - INTERVAL check_interval SECOND');
+            });
     }
+
 }

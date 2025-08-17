@@ -32,7 +32,6 @@ class CheckWebsiteJob implements ShouldQueue
     {
         $result = $monitor->checkWebsite($this->website);
 
-        // persist check in uptime_checks table
         UptimeCheck::create([
             'website_id'    => $this->website->id,
             'status'        => $result['status'],

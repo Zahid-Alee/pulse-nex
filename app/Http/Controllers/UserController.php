@@ -152,7 +152,7 @@ class UserController extends Controller
         $subscription = Subscription::create([
             'user_id' => $user->id,
             'plan_name' => 'Free',
-            'monitors_limit' => 1,
+            'monitors_limit' => 5,
             'check_interval' => 5,
             'starts_at' => now(),
             'ends_at' => now()->addMonth(),

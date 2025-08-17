@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('uptime_checks', function (Blueprint $table) {
-  $table->id();
+            $table->id();
             $table->foreignId('website_id')->constrained()->onDelete('cascade');
             $table->string('status'); // up, down
             $table->integer('response_time')->nullable(); // milliseconds
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('error_message')->nullable();
             $table->timestamp('checked_at');
             $table->timestamps();
-            
+
             $table->index(['website_id', 'checked_at']);
             $table->index(['website_id', 'status', 'checked_at']);
         });

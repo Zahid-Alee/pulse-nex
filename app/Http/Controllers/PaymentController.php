@@ -15,15 +15,17 @@ class PaymentController extends Controller
 {
 
 
-    protected function sendSubscriptionMail(Subscription $subscription)
-    {
-        try {
-            $subscription->load('user');
-            Mail::to($subscription->user->email)->send(new SubscriptionUpdated($subscription));
-        } catch (\Exception $e) {
-            Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
-        }
-    }
+    // protected function sendSubscriptionMail(Subscription $subscription)
+    // {
+    //     try {
+    //         $subscription->load('user');
+    //         Mail::to($subscription->user->email)->send(new SubscriptionUpdated($subscription));
+    //     } catch (\Exception $e) {
+    //         Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
+    //     }
+    // }
+
+    
     public function create(Request $request)
     {
         $request->validate([
@@ -136,7 +138,7 @@ class PaymentController extends Controller
             ]
         );
 
-        $this->sendSubscriptionMail($subscription);
+        // $this->sendSubscriptionMail($subscription);
 
         return redirect()
             ->route('dashboard')

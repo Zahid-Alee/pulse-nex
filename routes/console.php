@@ -1,13 +1,14 @@
 <?php
 
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-
-app(Schedule::class)->command('websites:check')->everyMinute();
+Schedule::command('app:check-uptime-command')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
