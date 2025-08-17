@@ -34,11 +34,11 @@ export default function UserPlan() {
                         description="Manage your account's subscription plan" 
                     />
 
-                    <div className="rounded-lg border bg-white p-4 shadow">
-                        <h2 className="text-lg font-semibold">
+                    <div className="rounded-lg border bg-white p-4 shadow dark:border-gray-700 dark:bg-gray-800">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             Current Plan: {currentPlan?.name}
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                             {currentPlan?.info}
                         </p>
                     </div>
@@ -46,7 +46,7 @@ export default function UserPlan() {
                     <div className="mt-4">
                         <a 
                             href="/pricing" 
-                            className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                            className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                         >
                             Upgrade Plan
                         </a>
