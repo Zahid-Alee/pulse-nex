@@ -43,14 +43,16 @@ export default function UserPlan() {
                         </p>
                     </div>
 
-                    <div className="mt-4">
-                        <a 
-                            href="/pricing" 
-                            className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                        >
-                            Upgrade Plan
-                        </a>
-                    </div>
+                    {currentPlan?.slug !== 'business' && (
+                        <div className="mt-4">
+                            <a
+                                href="/pricing"
+                                className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                            >
+                                Upgrade Plan
+                            </a>
+                        </div>
+                    )}
                 </div>
             </SettingsLayout>
         </AppLayout>
