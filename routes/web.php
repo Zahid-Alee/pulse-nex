@@ -10,20 +10,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Resend\Laravel\Facades\Resend;
 
-Route::get('/test-mail', function () {
-    $user = User::first();
-    try {
-        Resend::emails()->send([
-            'from' => 'Zahid <admin@pulsenex.online>',
-            'to' => ['vuseidubuva-4389@yopmail.com'],
-            'subject' => 'hello world',
-            'html' => (new WelcomeEmail($user))->render(),
-        ]);
-        return 'Email sent successfully!';
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
+// Route::get('/test-mail', function () {
+//     $user = User::first();
+//     try {
+//         Resend::emails()->send([
+//             'from' => 'Zahid <admin@pulsenex.online>',
+//             'to' => ['vuseidubuva-4389@yopmail.com'],
+//             'subject' => 'hello world',
+//             'html' => (new WelcomeEmail($user))->render(),
+//         ]);
+//         return 'Email sent successfully!';
+//     } catch (\Exception $e) {
+//         return 'Error: ' . $e->getMessage();
+//     }
+// });
 
 
 Route::get('/', function () {

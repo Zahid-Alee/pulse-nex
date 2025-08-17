@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SubscriptionUpdated;
 use App\Mail\WelcomeEmail;
 use App\Models\Subscription;
 use App\Models\User;
@@ -20,12 +21,23 @@ use Inertia\Response;
 class RegisteredUserController extends Controller
 {
 
+
+
+    protected function sendSubscriptionMail(Subscription $subscription)
+    {
+        try {
+            $subscription->load('user');
+            Mail::to($subscription->user->email)->send(new SubscriptionUpdated($subscription));
+        } catch (\Exception $e) {
+            Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
+        }
+    }
+
     protected function sendWelcomeMail(User $user)
     {
         try {
             // The line that sends the email
             Mail::to($user->email)->send(new WelcomeEmail($user));
-
         } catch (\Exception $e) {
             dd($e->getMessage());
             // If it fails, log the error message
@@ -57,7 +69,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        Subscription::create([
+        $subscription = Subscription::create([
             'user_id' => $user->id,
             'plan_name' => 'Free',
             'monitors_limit' => 5,
@@ -68,7 +80,9 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        // $this->sendWelcomeMail($user);
+        $this->sendWelcomeMail($user);
+        $this->sendSubscriptionMail($subscription);
+
 
         Auth::login($user);
 

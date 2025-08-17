@@ -158,8 +158,8 @@ class UserController extends Controller
             'ends_at' => now()->addMonth(),
         ]);
 
-        // $this->sendWelcomeMail($user);
-        // $this->sendSubscriptionMail($subscription);
+        $this->sendWelcomeMail($user);
+        $this->sendSubscriptionMail($subscription);
 
 
         return Inertia::render('users/list', [
