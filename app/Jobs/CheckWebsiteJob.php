@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class CheckWebsiteJob implements ShouldQueue
 {
@@ -45,41 +46,41 @@ class CheckWebsiteJob implements ShouldQueue
      */
     public function handle(UptimeMonitorService $monitor)
     {
-        try {
-            Log::info("Starting CheckWebsiteJob", [
-                'website_id' => $this->website->id,
-                'website_url' => $this->website->url,
-                'job_attempt' => $this->attempts()
-            ]);
+        Log::info("🔄 CheckWebsiteJob started", [
+            'website_id' => $this->website->id,
+            'website_url' => $this->website->url,
+            'job_attempt' => $this->attempts(),
+            'queued_at' => now()->toDateTimeString(),
+        ]);
 
-            // Check if the website should be checked based on interval
+        try {
             if (!$this->shouldCheckWebsite()) {
-                Log::info("Skipping website check - interval not reached", [
+                Log::info("⏩ Skipping website check - interval not reached", [
                     'website_id' => $this->website->id,
                     'last_checked_at' => $this->website->last_checked_at,
-                    'check_interval' => $this->website->check_interval
+                    'check_interval_sec' => $this->website->check_interval,
                 ]);
                 return;
             }
 
             $result = $monitor->checkWebsite($this->website);
 
-            Log::info("CheckWebsiteJob completed successfully", [
+            Log::info("✅ Website check completed", [
                 'website_id' => $this->website->id,
                 'status' => $result['status'],
-                'response_time' => $result['response_time'],
-                'status_code' => $result['status_code']
+                'response_time_ms' => $result['response_time'],
+                'status_code' => $result['status_code'],
+                'checked_at' => now()->toDateTimeString(),
             ]);
 
         } catch (\Exception $e) {
-            Log::error("CheckWebsiteJob failed", [
+            Log::error("❌ Website check failed", [
                 'website_id' => $this->website->id,
                 'error' => $e->getMessage(),
                 'attempt' => $this->attempts(),
-                'trace' => $e->getTraceAsString()
+                'max_tries' => $this->tries,
             ]);
 
-            // If this is the final attempt, create a failed check record
             if ($this->attempts() >= $this->tries) {
                 $this->createFailedCheck($e->getMessage());
             }
@@ -93,24 +94,30 @@ class CheckWebsiteJob implements ShouldQueue
      */
     protected function shouldCheckWebsite(): bool
     {
-        // Refresh the model to get the latest data
         $this->website->refresh();
 
-        // If never checked before, check now
         if (!$this->website->last_checked_at) {
+            Log::info("📌 First time check for website", [
+                'website_id' => $this->website->id
+            ]);
             return true;
         }
 
-        // Get current time in UTC to ensure consistency
-        $now = \Carbon\Carbon::now('UTC');
-        $lastChecked = \Carbon\Carbon::parse($this->website->last_checked_at)->utc();
-        
-        // Calculate time difference in seconds
+        $now = Carbon::now('UTC');
+        $lastChecked = Carbon::parse($this->website->last_checked_at)->utc();
+
         $timeDifferenceSeconds = $now->diffInSeconds($lastChecked);
-        
-        // Convert check_interval from minutes to seconds
-        $intervalSeconds = $this->website->check_interval * 60;
-        
+        $intervalSeconds = $this->website->check_interval;
+
+        Log::debug("⏱ Interval check calculation", [
+            'website_id' => $this->website->id,
+            'now' => $now->toDateTimeString(),
+            'last_checked_at' => $lastChecked->toDateTimeString(),
+            'elapsed_seconds' => $timeDifferenceSeconds,
+            'required_interval_seconds' => $intervalSeconds,
+            'can_run_check' => $timeDifferenceSeconds >= $intervalSeconds,
+        ]);
+
         return $timeDifferenceSeconds >= $intervalSeconds;
     }
 
@@ -120,15 +127,13 @@ class CheckWebsiteJob implements ShouldQueue
     protected function createFailedCheck(string $errorMessage): void
     {
         try {
-            $checkedAt = \Carbon\Carbon::now('UTC');
+            $checkedAt = now('UTC');
 
-            // Update website status
             $this->website->update([
                 'status' => 'down',
                 'last_checked_at' => $checkedAt
             ]);
 
-            // Create uptime check record
             UptimeCheck::create([
                 'website_id' => $this->website->id,
                 'status' => 'down',
@@ -138,13 +143,14 @@ class CheckWebsiteJob implements ShouldQueue
                 'checked_at' => $checkedAt,
             ]);
 
-            Log::info("Created failed check record", [
+            Log::warning("⚠️ Website marked as DOWN after all retries failed", [
                 'website_id' => $this->website->id,
-                'error_message' => $errorMessage
+                'error_message' => $errorMessage,
+                'checked_at' => $checkedAt->toDateTimeString(),
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Failed to create failed check record", [
+            Log::critical("🚨 Failed to record website failure", [
                 'website_id' => $this->website->id,
                 'error' => $e->getMessage()
             ]);
@@ -156,10 +162,11 @@ class CheckWebsiteJob implements ShouldQueue
      */
     public function failed(\Throwable $exception)
     {
-        Log::error("CheckWebsiteJob permanently failed", [
+        Log::alert("💥 CheckWebsiteJob permanently failed", [
             'website_id' => $this->website->id,
             'error' => $exception->getMessage(),
-            'attempts' => $this->attempts()
+            'attempts' => $this->attempts(),
+            'failed_at' => now()->toDateTimeString(),
         ]);
     }
 }
