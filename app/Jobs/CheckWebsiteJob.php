@@ -54,14 +54,25 @@ class CheckWebsiteJob implements ShouldQueue
         ]);
 
         try {
-            if (!$this->shouldCheckWebsite()) {
-                Log::info("⏩ Skipping website check - interval not reached", [
+            // Always check the website - the command already filters for websites that need checking
+            // But we can add a safety check here
+            $this->website->refresh();
+            
+            if (!$this->website->isDueForCheck()) {
+                Log::info("⏩ Skipping website check - not due yet", [
                     'website_id' => $this->website->id,
-                    'last_checked_at' => $this->website->last_checked_at,
+                    'last_checked_at' => $this->website->last_checked_at?->toDateTimeString(),
                     'check_interval_sec' => $this->website->check_interval,
+                    'next_check_time' => $this->website->next_check_time?->toDateTimeString(),
                 ]);
                 return;
             }
+
+            Log::info("🚀 Performing website check", [
+                'website_id' => $this->website->id,
+                'last_checked_at' => $this->website->last_checked_at?->toDateTimeString(),
+                'check_interval_sec' => $this->website->check_interval,
+            ]);
 
             $result = $monitor->checkWebsite($this->website);
 
@@ -90,44 +101,12 @@ class CheckWebsiteJob implements ShouldQueue
     }
 
     /**
-     * Check if enough time has passed since the last check
-     */
-    protected function shouldCheckWebsite(): bool
-    {
-        $this->website->refresh();
-
-        if (!$this->website->last_checked_at) {
-            Log::info("📌 First time check for website", [
-                'website_id' => $this->website->id
-            ]);
-            return true;
-        }
-
-        $now = Carbon::now('UTC');
-        $lastChecked = Carbon::parse($this->website->last_checked_at)->utc();
-
-        $timeDifferenceSeconds = $now->diffInSeconds($lastChecked);
-        $intervalSeconds = $this->website->check_interval;
-
-        Log::debug("⏱ Interval check calculation", [
-            'website_id' => $this->website->id,
-            'now' => $now->toDateTimeString(),
-            'last_checked_at' => $lastChecked->toDateTimeString(),
-            'elapsed_seconds' => $timeDifferenceSeconds,
-            'required_interval_seconds' => $intervalSeconds,
-            'can_run_check' => $timeDifferenceSeconds >= $intervalSeconds,
-        ]);
-
-        return $timeDifferenceSeconds >= $intervalSeconds;
-    }
-
-    /**
      * Create a failed check record when all job attempts are exhausted
      */
     protected function createFailedCheck(string $errorMessage): void
     {
         try {
-            $checkedAt = now('UTC');
+            $checkedAt = now();
 
             $this->website->update([
                 'status' => 'down',

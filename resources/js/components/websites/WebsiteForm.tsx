@@ -45,6 +45,8 @@ export default function WebsiteForm({
         is_active: initialValues.is_active ?? true,
     });
 
+    console.log('plan', subscription);
+
     const handleChange = (key: string, value: any) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };

@@ -1,7 +1,5 @@
 <?php
 
-// Add this scope to your Website model
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +11,7 @@ class Website extends Model
     protected $fillable = [
         'name',
         'url',
-        'check_interval', // in minutes
+        'check_interval', // in seconds
         'timeout',
         'status',
         'last_checked_at',
@@ -28,24 +26,36 @@ class Website extends Model
 
     /**
      * Scope to get websites that need to be checked
-     * This considers the check_interval and last_checked_at to determine if a check is due
+     * Fixed to handle timezone properly and use Carbon for consistent time handling
      */
     public function scopeNeedsCheck(Builder $query): Builder
     {
-        $now = Carbon::now('UTC');
+        return $query->where('check_interval', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('last_checked_at')
+                  ->orWhereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, NOW()) >= check_interval');
+            })
+            ->orderBy('last_checked_at', 'asc')
+            ->orderBy('check_interval', 'asc');
+    }
 
-        return $query->where(function ($q) use ($now) {
-            // Websites that have never been checked
-            $q->whereNull('last_checked_at')
-                // OR websites where enough time has passed since last check
-                ->orWhere(function ($subQuery) use ($now) {
-                    $subQuery->whereNotNull('last_checked_at')
-                        ->whereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, ?) >= check_interval', [$now]);
-                });
-        })
-            ->where('check_interval', '>', 0) // Only check websites with valid intervals
-            ->orderBy('last_checked_at', 'asc') // Check oldest first
-            ->orderBy('check_interval', 'asc'); // Then prioritize shorter intervals
+    /**
+     * Alternative scope using model method
+     */
+    public function scopeNeedsCheckSimple(Builder $query): Builder
+    {
+        $websites = $query->where('check_interval', '>', 0)->get();
+        $websiteIds = [];
+        
+        foreach ($websites as $website) {
+            if ($website->isDueForCheck()) {
+                $websiteIds[] = $website->id;
+            }
+        }
+        
+        return $query->whereIn('id', $websiteIds)
+            ->orderBy('last_checked_at', 'asc')
+            ->orderBy('check_interval', 'asc');
     }
 
     /**
@@ -53,7 +63,7 @@ class Website extends Model
      */
     public function scopeRecentChecks($query, int $days = 30)
     {
-        $cutoffDate = Carbon::now('UTC')->subDays($days);
+        $cutoffDate = Carbon::now()->subDays($days);
 
         return $this->hasMany(UptimeCheck::class)
             ->where('checked_at', '>=', $cutoffDate)
@@ -73,7 +83,7 @@ class Website extends Model
      */
     public function recentChecks(int $days = 30)
     {
-        $cutoffDate = Carbon::now('UTC')->subDays($days);
+        $cutoffDate = Carbon::now()->subDays($days);
 
         return $this->uptimeChecks()
             ->where('checked_at', '>=', $cutoffDate)
@@ -94,45 +104,85 @@ class Website extends Model
     public function getNextCheckTimeAttribute(): ?Carbon
     {
         if (!$this->last_checked_at) {
-            return Carbon::now('UTC');
+            return Carbon::now();
         }
 
-        return Carbon::parse($this->last_checked_at)
-            ->utc()
-            ->addSeconds($this->check_interval);
+        return $this->last_checked_at->copy()->addSeconds($this->check_interval);
     }
 
     /**
-     * Check if this website is due for a check
+     * Check if this website is due for a check - FIXED VERSION
+     * The main issue was in the diffInSeconds calculation
      */
     public function isDueForCheck(): bool
     {
+        // If never checked, it's due for check
         if (!$this->last_checked_at) {
             return true;
         }
 
-        $now = Carbon::now('UTC');
-        $lastChecked = Carbon::parse($this->last_checked_at)->utc();
-        $timeDifferenceSeconds = $now->diffInSeconds($lastChecked);
-        return $timeDifferenceSeconds >= $this->check_interval;
+        // Ensure we're working with Carbon instances in the same timezone (UTC)
+        $now = Carbon::now()->utc();
+        $lastChecked = $this->last_checked_at instanceof Carbon ? 
+            $this->last_checked_at->utc() : 
+            Carbon::parse($this->last_checked_at)->utc();
+
+        // Calculate seconds elapsed since last check
+        // FIXED: Use diffInSeconds with the correct parameter order
+        $secondsElapsed = $lastChecked->diffInSeconds($now);
+        
+        // Check if enough time has passed
+        $isDue = $secondsElapsed >= $this->check_interval;
+
+        // Add debug logging to help troubleshoot
+        \Log::debug("🔍 isDueForCheck Debug", [
+            'website_id' => $this->id,
+            'website_url' => $this->url,
+            'now' => $now->toDateTimeString(),
+            'last_checked_at' => $lastChecked->toDateTimeString(),
+            'check_interval_sec' => $this->check_interval,
+            'seconds_elapsed' => $secondsElapsed,
+            'is_due' => $isDue,
+            'timezone_now' => $now->timezone->getName(),
+            'timezone_last_checked' => $lastChecked->timezone->getName(),
+            'next_check_time' => $lastChecked->addSeconds($this->check_interval)->toDateTimeString()
+        ]);
+
+        return $isDue;
     }
 
     /**
-     * Get minutes until next check
+     * Get seconds until next check
      */
-    public function getMinutesUntilNextCheckAttribute(): int
+    public function getSecondsUntilNextCheckAttribute(): int
     {
         if (!$this->last_checked_at) {
             return 0;
         }
 
-        $now = Carbon::now('UTC');
-        $nextCheck = $this->next_check_time;
+        $now = Carbon::now()->utc();
+        $nextCheck = $this->next_check_time->utc();
 
         if ($nextCheck <= $now) {
             return 0;
         }
 
-        return $now->diffInSeconds($nextCheck);
+        return $nextCheck->diffInSeconds($now);
+    }
+
+    /**
+     * Legacy method name for backwards compatibility
+     */
+    public function getMinutesUntilNextCheckAttribute(): int
+    {
+        return ceil($this->getSecondsUntilNextCheckAttribute() / 60);
+    }
+
+    /**
+     * Helper method to force update last_checked_at to current time
+     */
+    public function touchLastCheckedAt(): void
+    {
+        $this->update(['last_checked_at' => Carbon::now()->utc()]);
     }
 }

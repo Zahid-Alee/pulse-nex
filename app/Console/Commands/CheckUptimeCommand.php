@@ -19,7 +19,8 @@ class CheckUptimeCommand extends Command
     protected $signature = 'app:check-uptime-command 
                             {--sync : Run checks synchronously instead of using queues}
                             {--limit=50 : Maximum number of websites to check per run}
-                            {--website-id= : Check specific website by ID}';
+                            {--website-id= : Check specific website by ID}
+                            {--debug : Show debug information}';
 
     /**
      * The console command description.
@@ -34,9 +35,15 @@ class CheckUptimeCommand extends Command
     public function handle(UptimeMonitorService $monitor)
     {
         $startTime = microtime(true);
-        $this->info("Starting uptime checks at " . Carbon::now('UTC')->toDateTimeString() . " UTC");
+        $this->info("Starting uptime checks at " . Carbon::now()->toDateTimeString());
 
         try {
+            // Show debug info if requested
+            if ($this->option('debug')) {
+                $this->showDebugInfo();
+                return 0;
+            }
+
             // Check specific website if ID provided
             if ($websiteId = $this->option('website-id')) {
                 return $this->checkSpecificWebsite($websiteId, $monitor);
@@ -50,6 +57,7 @@ class CheckUptimeCommand extends Command
 
             if ($websites->isEmpty()) {
                 $this->info("No websites need checking at this time.");
+                $this->showDebugInfo();
                 return 0;
             }
 
@@ -61,7 +69,9 @@ class CheckUptimeCommand extends Command
             foreach ($websites as $website) {
                 try {
                     $this->line("Processing website: {$website->name} ({$website->url})");
-
+                    $this->line("  Last checked: " . ($website->last_checked_at ? $website->last_checked_at->toDateTimeString() : 'Never'));
+                    $this->line("  Interval: {$website->check_interval} seconds");
+                    
                     if ($this->option('sync')) {
                         // Run synchronously for debugging
                         $result = $monitor->checkWebsite($website);
@@ -122,11 +132,14 @@ class CheckUptimeCommand extends Command
             $website = Website::findOrFail($websiteId);
             
             $this->info("Checking specific website: {$website->name} ({$website->url})");
+            $this->info("Last checked: " . ($website->last_checked_at ? $website->last_checked_at->toDateTimeString() : 'Never'));
+            $this->info("Check interval: {$website->check_interval} seconds");
             
             if (!$website->isDueForCheck()) {
                 $nextCheck = $website->next_check_time;
-                $this->warn("Website is not due for check yet. Next check scheduled for: {$nextCheck->toDateTimeString()} UTC");
-                $this->warn("Minutes until next check: {$website->minutes_until_next_check}");
+                $this->warn("Website is not due for check yet. Next check scheduled for: {$nextCheck->toDateTimeString()}");
+                $secondsUntilNext = $website->seconds_until_next_check;
+                $this->warn("Seconds until next check: {$secondsUntilNext}");
                 
                 if (!$this->confirm('Do you want to force the check anyway?')) {
                     return 0;
@@ -166,17 +179,25 @@ class CheckUptimeCommand extends Command
         $this->info("Total websites: {$allWebsites->count()}");
         $this->info("Websites needing check: {$needsCheck->count()}");
         
+        if ($allWebsites->isEmpty()) {
+            $this->warn("No websites found in database.");
+            return;
+        }
+        
         $this->table(
-            ['ID', 'Name', 'URL', 'Interval (min)', 'Last Checked', 'Next Check', 'Due?'],
+            ['ID', 'Name', 'URL', 'Interval (sec)', 'Last Checked', 'Next Check', 'Due?'],
             $allWebsites->map(function ($website) {
+                $isDue = $website->isDueForCheck();
+                $nextCheckTime = $website->next_check_time;
+                
                 return [
                     $website->id,
                     $website->name,
                     $website->url,
                     $website->check_interval,
-                    $website->last_checked_at ? $website->last_checked_at->format('Y-m-d H:i:s') . ' UTC' : 'Never',
-                    $website->next_check_time ? $website->next_check_time->format('Y-m-d H:i:s') . ' UTC' : 'Now',
-                    $website->isDueForCheck() ? 'Yes' : 'No'
+                    $website->last_checked_at ? $website->last_checked_at->format('Y-m-d H:i:s') : 'Never',
+                    $nextCheckTime ? $nextCheckTime->format('Y-m-d H:i:s') : 'Now',
+                    $isDue ? 'Yes' : 'No'
                 ];
             })->toArray()
         );
