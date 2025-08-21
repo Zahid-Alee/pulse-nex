@@ -88,6 +88,29 @@ class ContactController extends Controller
         ]);
     }
 
+    public function destroy($id)
+    {
+        $contact = Contact::findOrFail($id);
+        $contact->delete();
+
+        $contacts = Contact::orderBy('created_at', 'desc')->get()->map(function ($contact) {
+            return [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'email' => $contact->email,
+                'subject' => $contact->subject,
+                'message' => $contact->message,
+                'status' => $contact->status ?? 'new',
+                'created_at' => $contact->created_at->format('Y-m-d H:i'),
+            ];
+        });
+
+        return Inertia::render('contacts/list', [
+            'contacts' => $contacts,
+        ]);
+    }
+
+
 
     /**
      * Get all contact messages.

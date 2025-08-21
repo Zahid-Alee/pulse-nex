@@ -26,14 +26,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Admin Contacts routes
     Route::prefix('admin/contacts')->name('admin.contacts.')->group(function () {
-        Route::get('/', [ContactController::class, 'view'])->name('index');
+        Route::get('/', [ContactController::class, 'view'])->name('contact.index');
         Route::post('/{id}/status', [ContactController::class, 'updateStatus'])->name('updateStatus');
         Route::get('/{id}', [ContactController::class, 'show'])->name('show');
+        Route::delete('/{id}', [ContactController::class, 'destroy'])->name('destroy');
     });
 
     // Admin Users routes
     Route::prefix('admin/users')->name('admin.users.')->group(function () {
-        Route::get('/', [UserController::class, 'view'])->name('index');
+        Route::get('/', [UserController::class, 'view'])->name('users.index');
         Route::get('create', [UserController::class, 'createView'])->name('create');
         Route::post('/', [UserController::class, 'store'])->name('store');
         Route::get('{user}/edit', [UserController::class, 'editView'])->name('edit');

@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
-import { Head, usePage } from '@inertiajs/react';
-import { Eye } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Eye, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function ContactsList() {
@@ -24,6 +24,12 @@ export default function ContactsList() {
     const closeContactModal = () => {
         setSelectedContactId(null);
         setContactDetails(null);
+    };
+
+    const handleDelete = (id: number) => {
+        if (confirm('Are you sure you want to delete this contact?')) {
+            router.delete(`/admin/contacts/${id}`);
+        }
     };
 
     useEffect(() => {
@@ -100,6 +106,17 @@ export default function ContactsList() {
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>View Query</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="destructive" size="sm" onClick={() => handleDelete(contact.id)}>
+                                                                    <Trash2 size={16} />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Delete Query</TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
                                                 </div>

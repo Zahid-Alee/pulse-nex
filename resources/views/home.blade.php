@@ -25,7 +25,7 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="features">
+    <section class="features">
         <div class="container">
             <h2>Everything You Need to Monitor Your Websites</h2>
             <div class="features-grid">
@@ -35,18 +35,18 @@
                     <p>Continuously monitor your websites’ availability with scheduled checks at regular intervals.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon alert-icon"></div>
+                    <div class="feature-icon ssl-icon"></div>
                     <h3>Instant Downtime Alerts</h3>
                     <p>Receive email notifications the moment your website goes down so you can act quickly.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon analytics-icon"></div>
+                    <div class="feature-icon response-icon"></div>
                     <h3>Detailed Analytics & Reports</h3>
                     <p>Track uptime statistics, response patterns, and performance trends with easy-to-read analytics.
                     </p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon history-icon"></div>
+                    <div class="feature-icon domain-icon"></div>
                     <h3>Website History</h3>
                     <p>Access historical uptime and downtime data to analyze your website’s reliability over time.</p>
                 </div>

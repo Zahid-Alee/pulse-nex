@@ -236,7 +236,7 @@ class UserController extends Controller
             ]
         );
 
-        // $this->sendSubscriptionMail($subscription); // <-- ADD THIS LINE
+        $this->sendSubscriptionMail($subscription);
 
         return back()->with('success', 'User plan updated successfully.');
     }
