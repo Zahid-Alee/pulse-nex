@@ -1,22 +1,24 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type ThemeVariant = "white" | "blue";
+type ThemeVariant = "white" | "blue" | "accent";
 
 // Base table
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement> & { variant?: ThemeVariant }
 >(({ className, variant = "white", ...props }, ref) => (
-  <div className="w-full overflow-auto">
+  <div className="w-full overflow-auto rounded-lg shadow-sm border border-border">
     <table
       ref={ref}
       className={cn(
         "w-full border-collapse text-sm",
         variant === "white" &&
-          "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100",
+          "bg-card text-card-foreground",
         variant === "blue" &&
-          "bg-[#295BCC] text-white", 
+          "bg-primary text-primary-foreground", 
+        variant === "accent" &&
+          "bg-accent text-accent-foreground",
         className
       )}
       {...props}
@@ -33,9 +35,13 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
+      "border-b border-border",
       variant === "white" &&
-        "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
-      variant === "blue" && "bg-[#1F4AA5] text-white",
+        "bg-muted text-muted-foreground font-semibold",
+      variant === "blue" && 
+        "bg-primary/90 text-primary-foreground font-semibold",
+      variant === "accent" && 
+        "bg-accent/80 text-accent-foreground font-semibold",
       className
     )}
     {...props}
@@ -51,9 +57,13 @@ const TableBody = React.forwardRef<
   <tbody
     ref={ref}
     className={cn(
+      "divide-y",
       variant === "white" &&
-        "divide-y divide-gray-200 dark:divide-gray-700",
-      variant === "blue" && "divide-y divide-[#1F4AA5]",
+        "divide-border",
+      variant === "blue" && 
+        "divide-primary-foreground/20",
+      variant === "accent" && 
+        "divide-accent-foreground/20",
       className
     )}
     {...props}
@@ -69,10 +79,13 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "transition-colors",
+      "transition-all duration-200 ease-in-out",
       variant === "white" &&
-        "hover:bg-gray-100 dark:hover:bg-gray-800/50",
-      variant === "blue" && "hover:bg-[#1F4AA5]/60",
+        "hover:bg-muted/50 data-[state=selected]:bg-muted",
+      variant === "blue" && 
+        "hover:bg-primary-foreground/10 data-[state=selected]:bg-primary-foreground/20",
+      variant === "accent" && 
+        "hover:bg-accent-foreground/10 data-[state=selected]:bg-accent-foreground/20",
       className
     )}
     {...props}
@@ -88,11 +101,13 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "px-4 py-3 text-left font-medium",
+      "px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider",
       variant === "white" &&
-        "text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700",
+        "text-muted-foreground",
       variant === "blue" &&
-        "text-white border-b border-[#1F4AA5]",
+        "text-primary-foreground/90",
+      variant === "accent" &&
+        "text-accent-foreground/90",
       className
     )}
     {...props}
@@ -108,11 +123,13 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3",
+      "px-4 py-3 text-sm",
       variant === "white" &&
-        "text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700",
+        "text-card-foreground",
       variant === "blue" &&
-        "text-white border-b border-[#1F4AA5]",
+        "text-primary-foreground",
+      variant === "accent" &&
+        "text-accent-foreground",
       className
     )}
     {...props}
@@ -120,11 +137,57 @@ const TableCell = React.forwardRef<
 ));
 TableCell.displayName = "TableCell";
 
+// Table Footer (bonus component for completeness)
+const TableFooter = React.forwardRef<
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement> & { variant?: ThemeVariant }
+>(({ className, variant = "white", ...props }, ref) => (
+  <tfoot
+    ref={ref}
+    className={cn(
+      "border-t font-medium",
+      variant === "white" &&
+        "bg-muted/50 text-muted-foreground border-border",
+      variant === "blue" && 
+        "bg-primary/80 text-primary-foreground border-primary-foreground/20",
+      variant === "accent" && 
+        "bg-accent/60 text-accent-foreground border-accent-foreground/20",
+      className
+    )}
+    {...props}
+  />
+));
+TableFooter.displayName = "TableFooter";
+
+// Table Caption (bonus component for accessibility)
+const TableCaption = React.forwardRef<
+  HTMLTableCaptionElement,
+  React.HTMLAttributes<HTMLTableCaptionElement> & { variant?: ThemeVariant }
+>(({ className, variant = "white", ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn(
+      "mt-4 text-sm",
+      variant === "white" &&
+        "text-muted-foreground",
+      variant === "blue" &&
+        "text-primary/70",
+      variant === "accent" &&
+        "text-accent/70",
+      className
+    )}
+    {...props}
+  />
+));
+TableCaption.displayName = "TableCaption";
+
 export {
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableHead,
-  TableCell
+  TableCell,
+  TableFooter,
+  TableCaption
 };

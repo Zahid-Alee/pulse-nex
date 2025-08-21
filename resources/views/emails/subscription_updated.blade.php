@@ -22,7 +22,6 @@
         <div class="plan-box">
             <h2>Your Plan: {{ $subscription->plan_name }}</h2>
             <ul>
-                <li><strong>💰 Amount:</strong> ${{ number_format($subscription->amount, 2) }}/month</li>
                 <li><strong>🖥️ Monitors Limit:</strong> {{ $subscription->monitors_limit }}</li>
                 <li><strong>⏱️ Check Interval:</strong> Every {{ $subscription->check_interval }} minutes</li>
                 <li><strong>✅ Plan Active Until:</strong> {{ $subscription->ends_at->format('F d, Y') }}</li>

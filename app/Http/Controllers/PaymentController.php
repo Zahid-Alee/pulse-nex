@@ -14,7 +14,6 @@ use Stripe\PaymentIntent;
 class PaymentController extends Controller
 {
 
-
     protected function sendSubscriptionMail(Subscription $subscription)
     {
         try {
@@ -24,7 +23,6 @@ class PaymentController extends Controller
             Log::error("Failed to send subscription email for user {$subscription->user->id}. Error: " . $e->getMessage());
         }
     }
-
 
     public function create(Request $request)
     {
@@ -37,7 +35,7 @@ class PaymentController extends Controller
 
         $userId = auth()->id();
 
-        // Handle Free Plan (no Stripe needed)
+        // Handle Free Plan
         if ((float) $request->amount === 0.0) {
             // Save or update payment record
             Payment::updateOrCreate(
@@ -67,13 +65,14 @@ class PaymentController extends Controller
                 ]
             );
 
+            // Send mail
             $this->sendSubscriptionMail($subscription);
 
             return redirect()->route('dashboard')
                 ->with('success', 'Free plan activated successfully.');
         }
 
-        // Paid plans → create Stripe PaymentIntent
+        // Paid Plan (One-time payment)
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $intent = PaymentIntent::create([
@@ -88,7 +87,7 @@ class PaymentController extends Controller
             ],
         ]);
 
-        // Save or update pending payment
+        // Save or update payment record
         Payment::updateOrCreate(
             ['payment_intent_id' => $intent->id],
             [
@@ -98,9 +97,22 @@ class PaymentController extends Controller
                 'currency'       => 'usd',
                 'monitors_limit' => $request->monitors_limit,
                 'check_interval' => $request->check_interval,
-                'status'         => 'pending',
+                'status'         => 'succeeded', // mark as succeeded since no webhook
             ]
         );
+
+        $subscription = Subscription::updateOrCreate(
+            ['user_id' => $userId],
+            [
+                'plan_name'      => $request->plan_name,
+                'monitors_limit' => $request->monitors_limit,
+                'check_interval' => $request->check_interval,
+                'starts_at'      => now(),
+                'ends_at'        => now()->addMonth(),
+            ]
+        );
+
+        $this->sendSubscriptionMail($subscription);
 
         return view('payment.stripe', [
             'clientSecret' => $intent->client_secret,
@@ -108,6 +120,7 @@ class PaymentController extends Controller
             'amount'       => $request->amount,
         ]);
     }
+
 
     public function success(Request $request)
     {
@@ -138,7 +151,7 @@ class PaymentController extends Controller
             ]
         );
 
-        // $this->sendSubscriptionMail($subscription);
+        $this->sendSubscriptionMail($subscription);
 
         return redirect()
             ->route('dashboard')

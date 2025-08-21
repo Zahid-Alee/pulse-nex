@@ -58,7 +58,7 @@
     </section>
 
     <!-- Feature Grid -->
-    <section class="additional-features">
+    <section id="additional-features" class="additional-features">
         <div class="container">
             <h2>More Essential Tools</h2>
             <div class="features-grid">

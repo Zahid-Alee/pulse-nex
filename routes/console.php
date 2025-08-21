@@ -8,15 +8,15 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule uptime checks every minute
-Schedule::command('app:check-uptime-command')
-    ->everyMinute()
-    ->withoutOverlapping(5)
-    ->runInBackground()
-    ->onSuccess(function () {
-        \Illuminate\Support\Facades\Log::info('Uptime check command completed successfully');
-    })
-    ->onFailure(function () {
-        \Illuminate\Support\Facades\Log::error('Uptime check command failed');
-    });
+// Schedule uptime checks every thirty seconds
+    Schedule::command('app:check-uptime-command')
+        ->everyThirtySeconds()
+        ->withoutOverlapping(5)
+        ->runInBackground()
+        ->onSuccess(function () {
+            \Illuminate\Support\Facades\Log::info('Uptime check command completed successfully');
+        })
+        ->onFailure(function () {
+            \Illuminate\Support\Facades\Log::error('Uptime check command failed');
+        });
 
