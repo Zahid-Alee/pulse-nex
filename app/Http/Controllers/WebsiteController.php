@@ -29,7 +29,6 @@ class WebsiteController extends Controller
 
         if ($user->is_admin == 1) {
             return redirect()->route('admin.dashboard')->with('success', 'Website added successfully');
-            // Admin-specific logic
         }
 
         return Inertia::render('dashboard', [
@@ -75,7 +74,6 @@ class WebsiteController extends Controller
     }
 
 
-
     public function editView(Website $website)
     {
         $this->authorize('update', $website);
@@ -88,11 +86,11 @@ class WebsiteController extends Controller
 
     public function showView(Website $website)
     {
-        $this->authorize('view', $website);
+        // $this->authorize('view', $website);
 
         $days = 30;
         $stats = $this->uptimeMonitor->getWebsiteStats($website, $days);
-        $history = $website->recentChecks(10)->paginate(10);
+        $history = $website->recentChecks()->paginate(10);
 
         return Inertia::render('websites/view', [
             'website' => $website,

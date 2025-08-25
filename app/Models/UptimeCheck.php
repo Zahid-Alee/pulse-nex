@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,18 +12,25 @@ class UptimeCheck extends Model
     /** @use HasFactory<\Database\Factories\UptimeCheckFactory> */
     use HasFactory;
 
-        protected $fillable = [
+    protected $fillable = [
         'website_id',
         'status',
         'response_time',
         'status_code',
         'error_message',
-        'checked_at'
     ];
 
     protected $casts = [
-        'checked_at' => 'datetime'
+        'checked_at' => 'datetime',
     ];
+
+    public function getCheckedAtAttribute($value)
+    {
+        return $value
+            ? \Carbon\Carbon::parse($value)
+            ->timezone(config('app.timezone'))
+            : null;
+    }
 
     public function website(): BelongsTo
     {
@@ -43,5 +51,4 @@ class UptimeCheck extends Model
     {
         return $query->where('checked_at', '>=', now()->subDays($days));
     }
-
 }

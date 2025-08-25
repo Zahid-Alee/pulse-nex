@@ -13,6 +13,8 @@ export default function ViewUser() {
     const { props } = usePage<{ user: any; websites: any[] }>();
     const { user, websites } = props;
 
+    console.log('website',websites);
+
     const initials = user.name
         .split(' ')
         .map((n: string) => n[0])

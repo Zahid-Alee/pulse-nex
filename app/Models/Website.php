@@ -11,11 +11,12 @@ class Website extends Model
     protected $fillable = [
         'name',
         'url',
-        'check_interval', // in seconds
+        'check_interval',
         'timeout',
         'status',
         'last_checked_at',
-        'user_id'
+        'user_id',
+        'is_active',
     ];
 
     protected $casts = [
@@ -33,7 +34,7 @@ class Website extends Model
         return $query->where('check_interval', '>', 0)
             ->where(function ($q) {
                 $q->whereNull('last_checked_at')
-                  ->orWhereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, NOW()) >= check_interval');
+                    ->orWhereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, NOW()) >= check_interval');
             })
             ->orderBy('last_checked_at', 'asc')
             ->orderBy('check_interval', 'asc');
@@ -46,13 +47,13 @@ class Website extends Model
     {
         $websites = $query->where('check_interval', '>', 0)->get();
         $websiteIds = [];
-        
+
         foreach ($websites as $website) {
             if ($website->isDueForCheck()) {
                 $websiteIds[] = $website->id;
             }
         }
-        
+
         return $query->whereIn('id', $websiteIds)
             ->orderBy('last_checked_at', 'asc')
             ->orderBy('check_interval', 'asc');
@@ -63,7 +64,7 @@ class Website extends Model
      */
     public function scopeRecentChecks($query, int $days = 30)
     {
-        $cutoffDate = Carbon::now()->subDays($days);
+        $cutoffDate = Carbon::now(config('app.timezone'))->subDays($days);
 
         return $this->hasMany(UptimeCheck::class)
             ->where('checked_at', '>=', $cutoffDate)
@@ -81,12 +82,9 @@ class Website extends Model
     /**
      * Get recent checks for the specified number of days
      */
-    public function recentChecks(int $days = 30)
+    public function recentChecks()
     {
-        $cutoffDate = Carbon::now()->subDays($days);
-
         return $this->uptimeChecks()
-            ->where('checked_at', '>=', $cutoffDate)
             ->orderBy('checked_at', 'desc');
     }
 
@@ -104,15 +102,17 @@ class Website extends Model
     public function getNextCheckTimeAttribute(): ?Carbon
     {
         if (!$this->last_checked_at) {
-            return Carbon::now();
+            return Carbon::now(config('app.timezone'));
         }
 
-        return $this->last_checked_at->copy()->addSeconds($this->check_interval);
+        return $this->last_checked_at->copy()
+            ->setTimezone(config('app.timezone'))
+            ->addSeconds($this->check_interval);
     }
 
     /**
      * Check if this website is due for a check - FIXED VERSION
-     * The main issue was in the diffInSeconds calculation
+     * Now uses app timezone instead of hardcoded UTC
      */
     public function isDueForCheck(): bool
     {
@@ -121,16 +121,18 @@ class Website extends Model
             return true;
         }
 
-        // Ensure we're working with Carbon instances in the same timezone (UTC)
-        $now = Carbon::now()->utc();
-        $lastChecked = $this->last_checked_at instanceof Carbon ? 
-            $this->last_checked_at->utc() : 
-            Carbon::parse($this->last_checked_at)->utc();
+        // Use app configured timezone instead of hardcoded UTC
+        $appTimezone = config('app.timezone');
+        $now = Carbon::now($appTimezone);
+
+        // Ensure we're working with Carbon instances in the same timezone
+        $lastChecked = $this->last_checked_at instanceof Carbon ?
+            $this->last_checked_at->setTimezone($appTimezone) :
+            Carbon::parse($this->last_checked_at)->setTimezone($appTimezone);
 
         // Calculate seconds elapsed since last check
-        // FIXED: Use diffInSeconds with the correct parameter order
         $secondsElapsed = $lastChecked->diffInSeconds($now);
-        
+
         // Check if enough time has passed
         $isDue = $secondsElapsed >= $this->check_interval;
 
@@ -138,14 +140,13 @@ class Website extends Model
         \Log::debug("🔍 isDueForCheck Debug", [
             'website_id' => $this->id,
             'website_url' => $this->url,
+            'app_timezone' => $appTimezone,
             'now' => $now->toDateTimeString(),
             'last_checked_at' => $lastChecked->toDateTimeString(),
             'check_interval_sec' => $this->check_interval,
             'seconds_elapsed' => $secondsElapsed,
             'is_due' => $isDue,
-            'timezone_now' => $now->timezone->getName(),
-            'timezone_last_checked' => $lastChecked->timezone->getName(),
-            'next_check_time' => $lastChecked->addSeconds($this->check_interval)->toDateTimeString()
+            'next_check_time' => $lastChecked->copy()->addSeconds($this->check_interval)->toDateTimeString()
         ]);
 
         return $isDue;
@@ -160,8 +161,9 @@ class Website extends Model
             return 0;
         }
 
-        $now = Carbon::now()->utc();
-        $nextCheck = $this->next_check_time->utc();
+        $appTimezone = config('app.timezone');
+        $now = Carbon::now($appTimezone);
+        $nextCheck = $this->next_check_time->setTimezone($appTimezone);
 
         if ($nextCheck <= $now) {
             return 0;
@@ -180,9 +182,10 @@ class Website extends Model
 
     /**
      * Helper method to force update last_checked_at to current time
+     * Now uses app timezone instead of UTC
      */
     public function touchLastCheckedAt(): void
     {
-        $this->update(['last_checked_at' => Carbon::now()->utc()]);
+        $this->update(['last_checked_at' => Carbon::now(config('app.timezone'))]);
     }
 }

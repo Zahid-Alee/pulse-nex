@@ -82,8 +82,14 @@ class UserController extends Controller
                     'url' => $website->url,
                     'status' => $website->status,
                     'check_interval' => $website->check_interval,
+                    'is_active' => $website->is_active,
+                    'timeout' => $website->timeout,
+                    'last_checked_at' => $website->last_checked_at
+                        ? $website->last_checked_at->timezone(config('app.timezone'))->format('Y-m-d H:i:s')
+                        : null,
                 ];
             }),
+
         ]);
     }
 
