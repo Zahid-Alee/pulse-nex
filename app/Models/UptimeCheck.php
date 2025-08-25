@@ -10,6 +10,7 @@ class UptimeCheck extends Model
     protected $fillable = [
         'website_id',
         'status_code',
+        'status',
         'response_time',
         'is_up',
         'checked_at',

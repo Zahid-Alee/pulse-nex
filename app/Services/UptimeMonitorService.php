@@ -219,7 +219,6 @@ class UptimeMonitorService
             $this->handleDowntimeNotification($website, $errorMessage);
         }
 
-        // Update website status and last checked time using app timezone
         $website->update([
             'status' => $status,
             'last_checked_at' => $checkedAt

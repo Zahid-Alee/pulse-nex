@@ -164,7 +164,6 @@ class WebsiteController extends Controller
             return back()->withErrors(['subscription' => 'No active subscription found.']);
         }
 
-        // Check if user has reached monitors limit
         $currentWebsites = $user->websites()->count();
         if ($subscription->monitors_limit && $currentWebsites >= $subscription->monitors_limit) {
             return back()->withErrors(['monitors_limit' => 'You have reached your plan\'s website limit.']);
