@@ -11,12 +11,11 @@ class Website extends Model
     protected $fillable = [
         'name',
         'url',
-        'check_interval',
+        'check_interval', // in seconds
         'timeout',
         'status',
         'last_checked_at',
-        'user_id',
-        'is_active',
+        'user_id'
     ];
 
     protected $casts = [
@@ -27,7 +26,7 @@ class Website extends Model
 
     /**
      * Scope to get websites that need to be checked
-     * Uses app timezone for consistent time handling
+     * Fixed to handle timezone properly and use Carbon for consistent time handling
      */
     public function scopeNeedsCheck(Builder $query): Builder
     {
@@ -143,7 +142,6 @@ class Website extends Model
             'app_timezone' => $appTimezone,
             'now' => $now->toDateTimeString(),
             'last_checked_at' => $lastChecked->toDateTimeString(),
-            'timezone' => config('app.timezone'),
             'check_interval_sec' => $this->check_interval,
             'seconds_elapsed' => $secondsElapsed,
             'is_due' => $isDue,
