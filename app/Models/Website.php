@@ -25,25 +25,12 @@ class Website extends Model
     ];
 
     /**
-     * Scope to get websites that need to be checked
-     * Fixed to handle timezone properly and use Carbon for consistent time handling
+     * FIXED: Scope to get websites that need to be checked
+     * Uses application logic instead of raw SQL to avoid timezone issues
      */
     public function scopeNeedsCheck(Builder $query): Builder
     {
-        return $query->where('check_interval', '>', 0)
-            ->where(function ($q) {
-                $q->whereNull('last_checked_at')
-                    ->orWhereRaw('TIMESTAMPDIFF(SECOND, last_checked_at, NOW()) >= check_interval');
-            })
-            ->orderBy('last_checked_at', 'asc')
-            ->orderBy('check_interval', 'asc');
-    }
-
-    /**
-     * Alternative scope using model method
-     */
-    public function scopeNeedsCheckSimple(Builder $query): Builder
-    {
+        // Get all active websites and filter them using model logic
         $websites = $query->where('check_interval', '>', 0)->get();
         $websiteIds = [];
 
@@ -53,7 +40,35 @@ class Website extends Model
             }
         }
 
+        if (empty($websiteIds)) {
+            return $query->whereRaw('1 = 0');
+        }
+
         return $query->whereIn('id', $websiteIds)
+            ->orderBy('last_checked_at', 'asc')
+            ->orderBy('check_interval', 'asc');
+    }
+
+    /**
+     * Alternative: More efficient scope using proper timezone conversion
+     * This version converts database time to app timezone for comparison
+     */
+    public function scopeNeedsCheckEfficient(Builder $query): Builder
+    {
+        $appTimezone = config('app.timezone');
+        $now = Carbon::now($appTimezone);
+        
+        return $query->where('check_interval', '>', 0)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('last_checked_at')
+                  ->orWhere(function($subQuery) use ($now) {
+                      // Convert the database timestamp to app timezone and compare
+                      $subQuery->whereRaw(
+                          'TIMESTAMPDIFF(SECOND, CONVERT_TZ(last_checked_at, @@session.time_zone, ?), ?) >= check_interval',
+                          [config('app.timezone'), $now->toDateTimeString()]
+                      );
+                  });
+            })
             ->orderBy('last_checked_at', 'asc')
             ->orderBy('check_interval', 'asc');
     }
@@ -110,8 +125,8 @@ class Website extends Model
     }
 
     /**
-     * Check if this website is due for a check - FIXED VERSION
-     * Now uses app timezone instead of hardcoded UTC
+     * Check if this website is due for a check - WORKING VERSION
+     * This method is working correctly as shown in your logs
      */
     public function isDueForCheck(): bool
     {
@@ -120,7 +135,7 @@ class Website extends Model
             return true;
         }
 
-        // Use app configured timezone instead of hardcoded UTC
+        // Use app configured timezone
         $appTimezone = config('app.timezone');
         $now = Carbon::now($appTimezone);
 
