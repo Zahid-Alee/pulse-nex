@@ -76,9 +76,9 @@ class UptimeMonitorService
             return true;
         }
 
-        // Get current time in UTC to ensure consistency
-        $now = Carbon::now('UTC');
-        $lastChecked = Carbon::parse($website->last_checked_at)->utc();
+        // Get current time using app timezone
+        $now = Carbon::now();
+        $lastChecked = Carbon::parse($website->last_checked_at);
 
         // Calculate time difference in seconds
         $timeDifferenceSeconds = $now->diffInSeconds($lastChecked);
@@ -88,8 +88,9 @@ class UptimeMonitorService
 
         Log::debug("Check interval calculation", [
             'website_id' => $website->id,
-            'now_utc' => $now->toDateTimeString(),
-            'last_checked_utc' => $lastChecked->toDateTimeString(),
+            'now' => $now->toDateTimeString(),
+            'last_checked' => $lastChecked->toDateTimeString(),
+            'timezone' => config('app.timezone'),
             'time_difference_seconds' => $timeDifferenceSeconds,
             'interval_seconds' => $intervalSeconds,
             'should_check' => $timeDifferenceSeconds >= $intervalSeconds
@@ -107,16 +108,16 @@ class UptimeMonitorService
             return 'Now (never checked)';
         }
 
-        $lastChecked = Carbon::parse($website->last_checked_at)->utc();
+        $lastChecked = Carbon::parse($website->last_checked_at);
         $nextCheck = $lastChecked->addMinutes($website->check_interval);
 
-        return $nextCheck->toDateTimeString() . ' UTC';
+        return $nextCheck->toDateTimeString() . ' (' . config('app.timezone') . ')';
     }
 
     public function checkWebsite(Website $website): array
     {
         $startTime = microtime(true);
-        $checkedAt = Carbon::now('UTC'); // Ensure UTC timezone
+        $checkedAt = Carbon::now(); 
         $status = 'down';
         $responseTime = null;
         $statusCode = null;
@@ -126,7 +127,8 @@ class UptimeMonitorService
             'website_id' => $website->id,
             'url' => $website->url,
             'timeout' => $website->timeout,
-            'checked_at_utc' => $checkedAt->toDateTimeString()
+            'checked_at' => $checkedAt->toDateTimeString(),
+            'timezone' => config('app.timezone')
         ]);
 
         try {
@@ -212,7 +214,7 @@ class UptimeMonitorService
             $this->handleDowntimeNotification($website, $errorMessage);
         }
 
-        // Update website status and last checked time in UTC
+        // Update website status and last checked time using app timezone
         $website->update([
             'status' => $status,
             'last_checked_at' => $checkedAt
@@ -284,7 +286,7 @@ class UptimeMonitorService
     protected function cleanupOldChecks(Website $website): void
     {
         try {
-            $cutoffDate = Carbon::now('UTC')->subDays(90);
+            $cutoffDate = Carbon::now()->subDays(90);
 
             $deletedCount = UptimeCheck::where('website_id', $website->id)
                 ->where('checked_at', '<', $cutoffDate)
@@ -369,9 +371,9 @@ class UptimeMonitorService
         $incidents = $this->calculateIncidents($checks);
         $totalDowntime = $this->calculateTotalDowntime($checks, $website->check_interval);
 
-        // group by hour in UTC
+        // Group by hour using app timezone
         $hourlyData = $checks->groupBy(function ($check) {
-            return Carbon::parse($check->checked_at)->utc()->format('Y-m-d H:00');
+            return Carbon::parse($check->checked_at)->format('Y-m-d H:00');
         })->map(function ($group, $hour) {
             $total = $group->count();
             $up = $group->where('status', 'up')->count();
@@ -428,7 +430,7 @@ class UptimeMonitorService
             $totalIncidents += $this->calculateIncidents($checks);
 
             $checks->groupBy(function ($check) {
-                return Carbon::parse($check->checked_at)->utc()->format('Y-m-d H:00');
+                return Carbon::parse($check->checked_at)->format('Y-m-d H:00');
             })->each(function ($group, $hour) use (&$hourlyData) {
                 $total = $group->count();
                 $up = $group->where('status', 'up')->count();
@@ -455,5 +457,6 @@ class UptimeMonitorService
             'incidents' => $totalIncidents,
             'hourly_data' => $hourlyData
         ];
+
     }
 }

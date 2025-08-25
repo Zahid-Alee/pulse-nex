@@ -26,7 +26,7 @@ class Website extends Model
 
     /**
      * Scope to get websites that need to be checked
-     * Fixed to handle timezone properly and use Carbon for consistent time handling
+     * Uses app timezone for consistent time handling
      */
     public function scopeNeedsCheck(Builder $query): Builder
     {
@@ -111,8 +111,8 @@ class Website extends Model
     }
 
     /**
-     * Check if this website is due for a check - FIXED VERSION
-     * The main issue was in the diffInSeconds calculation
+     * Check if this website is due for a check
+     * Uses app timezone for consistent time handling
      */
     public function isDueForCheck(): bool
     {
@@ -121,14 +121,13 @@ class Website extends Model
             return true;
         }
 
-        // Ensure we're working with Carbon instances in the same timezone (UTC)
-        $now = Carbon::now()->utc();
+        // Use app timezone for consistent time handling
+        $now = Carbon::now();
         $lastChecked = $this->last_checked_at instanceof Carbon ? 
-            $this->last_checked_at->utc() : 
-            Carbon::parse($this->last_checked_at)->utc();
+            $this->last_checked_at : 
+            Carbon::parse($this->last_checked_at);
 
         // Calculate seconds elapsed since last check
-        // FIXED: Use diffInSeconds with the correct parameter order
         $secondsElapsed = $lastChecked->diffInSeconds($now);
         
         // Check if enough time has passed
@@ -140,12 +139,11 @@ class Website extends Model
             'website_url' => $this->url,
             'now' => $now->toDateTimeString(),
             'last_checked_at' => $lastChecked->toDateTimeString(),
+            'timezone' => config('app.timezone'),
             'check_interval_sec' => $this->check_interval,
             'seconds_elapsed' => $secondsElapsed,
             'is_due' => $isDue,
-            'timezone_now' => $now->timezone->getName(),
-            'timezone_last_checked' => $lastChecked->timezone->getName(),
-            'next_check_time' => $lastChecked->addSeconds($this->check_interval)->toDateTimeString()
+            'next_check_time' => $lastChecked->copy()->addSeconds($this->check_interval)->toDateTimeString()
         ]);
 
         return $isDue;
@@ -160,8 +158,8 @@ class Website extends Model
             return 0;
         }
 
-        $now = Carbon::now()->utc();
-        $nextCheck = $this->next_check_time->utc();
+        $now = Carbon::now();
+        $nextCheck = $this->next_check_time;
 
         if ($nextCheck <= $now) {
             return 0;
@@ -183,6 +181,6 @@ class Website extends Model
      */
     public function touchLastCheckedAt(): void
     {
-        $this->update(['last_checked_at' => Carbon::now()->utc()]);
+        $this->update(['last_checked_at' => Carbon::now()]);
     }
 }
