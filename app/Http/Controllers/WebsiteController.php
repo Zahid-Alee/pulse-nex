@@ -90,12 +90,38 @@ class WebsiteController extends Controller
 
         $days = 30;
         $stats = $this->uptimeMonitor->getWebsiteStats($website, $days);
-        $history = $website->recentChecks()->paginate(10);
+
+        // Get recent checks with proper pagination
+        $history = $website->recentChecks($days)->paginate(10);
 
         return Inertia::render('websites/view', [
             'website' => $website,
             'stats' => $stats,
             'history' => $history
+        ]);
+    }
+
+    public function history(Request $request, Website $website): JsonResponse
+    {
+        $this->authorize('view', $website);
+
+        $days = $request->get('days', 7);
+        $perPage = min($request->get('per_page', 50), 100);
+
+        // Use the fixed recentChecks method
+        $checks = $website->recentChecks($days)->paginate($perPage);
+
+        // Transform the data to ensure consistent timezone display
+        $checks->getCollection()->transform(function ($check) {
+            // The timezone conversion should already be handled by the model
+            // but we can add additional formatting here if needed
+            $check->formatted_checked_at = $check->checked_at->format('Y-m-d H:i:s T');
+            return $check;
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $checks
         ]);
     }
 
@@ -219,21 +245,6 @@ class WebsiteController extends Controller
         ]);
     }
 
-    public function history(Request $request, Website $website): JsonResponse
-    {
-        $this->authorize('view', $website);
-
-        $days = $request->get('days', 7);
-        $perPage = min($request->get('per_page', 50), 100);
-
-        $checks = $website->recentChecks($days)
-            ->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'data' => $checks
-        ]);
-    }
 
     public function stats(Request $request, Website $website): JsonResponse
     {

@@ -20,7 +20,7 @@ export default function ViewWebsite() {
             <Head title={website.name} />
             <div className="space-y-6 p-4">
                 <WebsiteStatsChart data={stats.hourly_data} uptimePercentage={stats.uptime_percentage} />
-                {/* <WebsiteHistoryTable history={history.data} /> */}
+                <WebsiteHistoryTable history={history.data} />
             </div>
         </AppLayout>
     );

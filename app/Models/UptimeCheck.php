@@ -2,53 +2,78 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
 
 class UptimeCheck extends Model
 {
-    /** @use HasFactory<\Database\Factories\UptimeCheckFactory> */
-    use HasFactory;
-
     protected $fillable = [
         'website_id',
-        'status',
-        'response_time',
         'status_code',
+        'response_time',
+        'is_up',
+        'checked_at',
         'error_message',
     ];
 
     protected $casts = [
         'checked_at' => 'datetime',
+        'response_time' => 'integer',
+        'is_up' => 'boolean',
     ];
 
-    public function getCheckedAtAttribute($value)
+    /**
+     * Override the date casting to ensure timezone conversion
+     */
+    protected function asDateTime($value)
     {
-        return $value
-            ? \Carbon\Carbon::parse($value)
-            ->timezone(config('app.timezone'))
-            : null;
+        // First convert using parent method (this handles the database value)
+        $datetime = parent::asDateTime($value);
+        
+        // If we have a valid datetime and an app timezone configured
+        if ($datetime && config('app.timezone')) {
+            // Convert from UTC (database storage) to app timezone for display
+            return $datetime->setTimezone(config('app.timezone'));
+        }
+        
+        return $datetime;
     }
 
-    public function website(): BelongsTo
+    /**
+     * Relationship to website
+     */
+    public function website()
     {
         return $this->belongsTo(Website::class);
     }
 
-    public function scopeUp($query)
+    /**
+     * Scope to get checks within a date range
+     */
+    public function scopeWithinDays($query, int $days = 7)
     {
-        return $query->where('status', 'up');
+        $appTimezone = config('app.timezone', 'UTC');
+        
+        $cutoffDate = Carbon::now($appTimezone)
+            ->subDays($days)
+            ->utc(); // Convert to UTC for database query
+
+        return $query->where('checked_at', '>=', $cutoffDate);
     }
 
-    public function scopeDown($query)
+    /**
+     * Scope to get only successful checks
+     */
+    public function scopeSuccessful($query)
     {
-        return $query->where('status', 'down');
+        return $query->where('is_up', true);
     }
 
-    public function scopeInLastDays($query, $days)
+    /**
+     * Scope to get only failed checks
+     */
+    public function scopeFailed($query)
     {
-        return $query->where('checked_at', '>=', now()->subDays($days));
+        return $query->where('is_up', false);
     }
 }
