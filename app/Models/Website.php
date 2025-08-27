@@ -11,27 +11,32 @@ class Website extends Model
     protected $fillable = [
         'name',
         'url',
-        'check_interval', // in seconds
+        'check_interval',
         'timeout',
         'status',
         'last_checked_at',
+        'is_active',
         'user_id'
     ];
 
     protected $casts = [
         'last_checked_at' => 'datetime',
         'check_interval' => 'integer',
-        'timeout' => 'integer'
+        'timeout' => 'integer',
+        'is_active' => 'boolean'
     ];
 
     /**
      * FIXED: Scope to get websites that need to be checked
-     * Uses application logic instead of raw SQL to avoid timezone issues
+     * Now properly filters by is_active status first
      */
     public function scopeNeedsCheck(Builder $query): Builder
     {
-        // Get all active websites and filter them using model logic
-        $websites = $query->where('check_interval', '>', 0)->get();
+        // First filter by active websites with valid check intervals
+        $websites = $query->where('is_active', true)
+                          ->where('check_interval', '>', 0)
+                          ->get();
+        
         $websiteIds = [];
 
         foreach ($websites as $website) {
@@ -52,22 +57,24 @@ class Website extends Model
     /**
      * Alternative: More efficient scope using proper timezone conversion
      * This version converts database time to app timezone for comparison
+     * ALSO FIXED: Now includes is_active check
      */
     public function scopeNeedsCheckEfficient(Builder $query): Builder
     {
         $appTimezone = config('app.timezone');
         $now = Carbon::now($appTimezone);
-        
-        return $query->where('check_interval', '>', 0)
+
+        return $query->where('is_active', true) // FIXED: Added is_active check
+            ->where('check_interval', '>', 0)
             ->where(function ($q) use ($now) {
                 $q->whereNull('last_checked_at')
-                  ->orWhere(function($subQuery) use ($now) {
-                      // Convert the database timestamp to app timezone and compare
-                      $subQuery->whereRaw(
-                          'TIMESTAMPDIFF(SECOND, CONVERT_TZ(last_checked_at, @@session.time_zone, ?), ?) >= check_interval',
-                          [config('app.timezone'), $now->toDateTimeString()]
-                      );
-                  });
+                    ->orWhere(function ($subQuery) use ($now) {
+                        // Convert the database timestamp to app timezone and compare
+                        $subQuery->whereRaw(
+                            'TIMESTAMPDIFF(SECOND, CONVERT_TZ(last_checked_at, @@session.time_zone, ?), ?) >= check_interval',
+                            [config('app.timezone'), $now->toDateTimeString()]
+                        );
+                    });
             })
             ->orderBy('last_checked_at', 'asc')
             ->orderBy('check_interval', 'asc');
@@ -130,6 +137,11 @@ class Website extends Model
      */
     public function isDueForCheck(): bool
     {
+        // FIXED: Check if website is active first
+        if (!$this->is_active) {
+            return false;
+        }
+
         // If never checked, it's due for check
         if (!$this->last_checked_at) {
             return true;
@@ -154,6 +166,7 @@ class Website extends Model
         \Log::debug("🔍 isDueForCheck Debug", [
             'website_id' => $this->id,
             'website_url' => $this->url,
+            'is_active' => $this->is_active,
             'app_timezone' => $appTimezone,
             'now' => $now->toDateTimeString(),
             'last_checked_at' => $lastChecked->toDateTimeString(),
@@ -171,7 +184,7 @@ class Website extends Model
      */
     public function getSecondsUntilNextCheckAttribute(): int
     {
-        if (!$this->last_checked_at) {
+        if (!$this->is_active || !$this->last_checked_at) {
             return 0;
         }
 

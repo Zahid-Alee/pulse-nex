@@ -10,6 +10,8 @@ use Carbon\Carbon;
 use App\Mail\WebsiteDownEmail;
 use Illuminate\Support\Facades\Mail;
 
+use function PHPUnit\Framework\returnSelf;
+
 class UptimeMonitorService
 {
     public function checkAllWebsites(): array
@@ -120,13 +122,22 @@ class UptimeMonitorService
 
     public function checkWebsite(Website $website): array
     {
+
         $startTime = microtime(true);
         $appTimezone = config('app.timezone');
-        $checkedAt = Carbon::now($appTimezone); // Use app timezone instead of UTC
+        $checkedAt = Carbon::now($appTimezone);
         $status = 'down';
         $responseTime = null;
         $statusCode = null;
         $errorMessage = null;
+
+        if ($website->is_active == 0) {
+            return [
+                'website_id' => $website->id,
+                'status' => 'inactive',
+                'message' => 'Website monitoring is inactive.'
+            ];
+    }
 
         Log::info("Starting website check", [
             'website_id' => $website->id,
@@ -136,8 +147,20 @@ class UptimeMonitorService
             'timezone' => $appTimezone
         ]);
 
+
+        if (!$website->is_active) {
+            Log::info("Website is inactive, skipping check", [
+                'website_id' => $website->id,
+                'url' => $website->url
+            ]);
+            return [
+                'website_id' => $website->id,
+                'status' => 'inactive',
+                'message' => 'Website monitoring is inactive.'
+            ];
+        }
+
         try {
-            // Add user agent and follow redirects for better compatibility
             $response = Http::timeout($website->timeout ?? 30)
                 ->connectTimeout(10)
                 ->withHeaders([

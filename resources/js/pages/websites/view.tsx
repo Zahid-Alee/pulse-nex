@@ -7,9 +7,6 @@ export default function ViewWebsite() {
     const { props } = usePage<{ website: any; stats: any; history: any }>();
     const { website, stats, history } = props;
 
-    console.log('history', history);
-
-
     return (
         <AppLayout
             breadcrumbs={[
@@ -20,7 +17,7 @@ export default function ViewWebsite() {
             <Head title={website.name} />
             <div className="space-y-6 p-4">
                 <WebsiteStatsChart data={stats.hourly_data} uptimePercentage={stats.uptime_percentage} />
-                <WebsiteHistoryTable history={history.data} />
+                <WebsiteHistoryTable websiteId={website.id} history={history.data} />
             </div>
         </AppLayout>
     );

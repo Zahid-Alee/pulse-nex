@@ -86,7 +86,6 @@ class WebsiteController extends Controller
 
     public function showView(Website $website)
     {
-        // $this->authorize('view', $website);
 
         $days = 30;
         $stats = $this->uptimeMonitor->getWebsiteStats($website, $days);
@@ -260,6 +259,83 @@ class WebsiteController extends Controller
             'data' => [
                 'stats' => $stats,
                 'hourly_data' => $hourlyStats
+            ]
+        ]);
+    }
+
+
+    public function getHistory(Website $website, Request $request)
+    {
+        $query = $website->uptimeChecks()->orderBy('checked_at', 'desc');
+
+        // Apply filters
+        if ($request->has('status')) {
+            $status = $request->get('status');
+            if (in_array($status, ['up', 'down', 'timeout', 'error'])) {
+                $query->where('status', $status);
+            }
+        }
+
+        // Date range filter
+        if ($request->has('from')) {
+            $query->where('checked_at', '>=', $request->get('from'));
+        }
+
+        if ($request->has('to')) {
+            $query->where('checked_at', '<=', $request->get('to'));
+        }
+
+        // Pagination
+        $limit = min($request->get('limit', 50), 500); // Max 500 records
+        $offset = $request->get('offset', 0);
+
+        // Get the total count AFTER applying filters
+        $totalFiltered = $query->count();
+
+        // Get the paginated results
+        $checks = $query->limit($limit)->offset($offset)->get();
+
+        // Get total count without filters
+        $total = $website->uptimeChecks()->count();
+
+        // Calculate uptime for the filtered results
+        $upChecksQuery = $website->uptimeChecks()->where('status', 'up');
+
+        // Apply the same date filters to uptime calculation (but not status filter)
+        if ($request->has('from')) {
+            $upChecksQuery->where('checked_at', '>=', $request->get('from'));
+        }
+
+        if ($request->has('to')) {
+            $upChecksQuery->where('checked_at', '<=', $request->get('to'));
+        }
+
+        $upChecks = $upChecksQuery->count();
+
+        // For uptime calculation, we need the total checks in the same date range
+        $totalChecksInRange = $website->uptimeChecks();
+
+        if ($request->has('from')) {
+            $totalChecksInRange->where('checked_at', '>=', $request->get('from'));
+        }
+
+        if ($request->has('to')) {
+            $totalChecksInRange->where('checked_at', '<=', $request->get('to'));
+        }
+
+        $totalChecksInRangeCount = $totalChecksInRange->count();
+
+        $uptimePercentage = $totalChecksInRangeCount > 0 ? round(($upChecks / $totalChecksInRangeCount) * 100, 2) : 0;
+
+        return response()->json([
+            'data' => $checks,
+            'meta' => [
+                'total' => $total,
+                'filtered_total' => $totalFiltered,
+                'limit' => $limit,
+                'offset' => $offset,
+                'uptime_percentage' => $uptimePercentage,
+                'has_more' => ($offset + $limit) < $totalFiltered
             ]
         ]);
     }

@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // Contact routes
-
 
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::post('/{id}/status', [ContactController::class, 'updateStatus'])->name('admin.contacts.updateStatus');
@@ -22,6 +20,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{website}', [WebsiteController::class, 'showView'])->name('website.show');
         Route::post('/{website}/check-now', [WebsiteController::class, 'checkNow'])->name('website.checkNow');
         Route::delete('/{website}', [WebsiteController::class, 'destroy'])->name('website.delete');
+        Route::get('/{website}/history', [WebsiteController::class, 'getHistory'])->name('website.history');
     });
 
     // Admin Contacts routes

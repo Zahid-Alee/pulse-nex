@@ -12,7 +12,6 @@ class UptimeCheck extends Model
         'status_code',
         'status',
         'response_time',
-        'is_up',
         'checked_at',
         'error_message',
     ];

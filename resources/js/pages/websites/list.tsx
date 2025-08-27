@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { EyeIcon, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { EyeIcon, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { useToast } from '@/components/ui/use-toast';
 import React from 'react';
@@ -16,6 +16,8 @@ export default function WebsitesList() {
     const websites = props.websites;
     const errors = props.errors || {};
     const flash = props.flash || {};
+
+    console.log('websites', websites);
 
     React.useEffect(() => {
         if (errors.check_now) {
