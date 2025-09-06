@@ -173,6 +173,7 @@ class WebsiteController extends Controller
             'url' => 'required|url|max:500',
             'check_interval' => 'integer',
             'timeout' => 'integer|min:5|max:120',
+            'is_active' => 'boolean',
         ]);
 
         if ($subscription->check_interval && $validated['check_interval'] < $subscription->check_interval) {
@@ -183,7 +184,7 @@ class WebsiteController extends Controller
 
         $website = Website::create($validated);
         $this->uptimeMonitor->checkWebsite($website);
-
+        
         return redirect()->route('website.list')->with('success', 'Website added successfully');
     }
 

@@ -122,36 +122,29 @@ class UptimeMonitorService
 
     public function checkWebsite(Website $website): array
     {
-
         $startTime = microtime(true);
         $appTimezone = config('app.timezone');
         $checkedAt = Carbon::now($appTimezone);
-        $status = 'down';
+
+        // Default values
+        $status = 'unknown';
         $responseTime = null;
         $statusCode = null;
         $errorMessage = null;
 
-        if ($website->is_active == 0) {
-            return [
-                'website_id' => $website->id,
-                'status' => 'inactive',
-                'message' => 'Website monitoring is inactive.'
-            ];
-    }
-
-        Log::info("Starting website check", [
+        Log::info("===== Starting website check =====", [
             'website_id' => $website->id,
             'url' => $website->url,
             'timeout' => $website->timeout,
-            'checked_at_local' => $checkedAt->toDateTimeString(),
-            'timezone' => $appTimezone
+            'is_active' => $website->is_active,
+            'checked_at' => $checkedAt->toDateTimeString(),
+            'timezone' => $appTimezone,
         ]);
 
 
         if (!$website->is_active) {
-            Log::info("Website is inactive, skipping check", [
+            Log::warning("Website monitoring inactive, skipping check", [
                 'website_id' => $website->id,
-                'url' => $website->url
             ]);
             return [
                 'website_id' => $website->id,
@@ -161,114 +154,135 @@ class UptimeMonitorService
         }
 
         try {
+            Log::info("Sending HTTP request...", [
+                'website_id' => $website->id,
+                'url' => $website->url,
+            ]);
+
             $response = Http::timeout($website->timeout ?? 30)
                 ->connectTimeout(10)
-                ->withHeaders([
-                    'User-Agent' => 'UptimeMonitor/1.0'
-                ])
-                ->withOptions([
-                    'verify' => false, // Skip SSL verification for self-signed certificates
-                    'allow_redirects' => true
-                ])
+                ->withHeaders(['User-Agent' => 'UptimeMonitor/1.0'])
+                ->withOptions(['verify' => false, 'allow_redirects' => true])
                 ->get($website->url);
 
             $endTime = microtime(true);
-            $responseTime = round(($endTime - $startTime) * 1000); // Response time in milliseconds
+            $responseTime = round(($endTime - $startTime) * 1000);
             $statusCode = $response->status();
 
             Log::info("HTTP response received", [
                 'website_id' => $website->id,
                 'status_code' => $statusCode,
                 'response_time_ms' => $responseTime,
-                'successful' => $response->successful()
+                'successful' => $response->successful(),
             ]);
 
-            // Consider 2xx and 3xx status codes as successful
             if ($response->successful() || ($statusCode >= 300 && $statusCode < 400)) {
                 $status = 'up';
                 Log::info("Website is UP", [
                     'website_id' => $website->id,
-                    'status_code' => $statusCode
+                    'status_code' => $statusCode,
                 ]);
             } else {
                 $status = 'down';
                 $errorMessage = "HTTP {$statusCode}";
-                Log::warning("Website is DOWN - HTTP error", [
+                Log::warning("Website is DOWN (HTTP error)", [
                     'website_id' => $website->id,
                     'status_code' => $statusCode,
-                    'error_message' => $errorMessage
+                    'error_message' => $errorMessage,
                 ]);
-
-                // Send email notification for down status
                 $this->handleDowntimeNotification($website, $errorMessage);
             }
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             $endTime = microtime(true);
             $responseTime = round(($endTime - $startTime) * 1000);
-            $errorMessage = 'Connection timeout or refused';
             $status = 'down';
+            $errorMessage = 'Connection timeout/refused';
 
-            Log::warning("Website is DOWN - Connection error", [
+            Log::error("Website DOWN - ConnectionException", [
                 'website_id' => $website->id,
                 'error_message' => $errorMessage,
-                'exception' => $e->getMessage()
+                'exception' => $e->getMessage(),
             ]);
-
             $this->handleDowntimeNotification($website, $errorMessage);
         } catch (\Illuminate\Http\Client\RequestException $e) {
             $endTime = microtime(true);
             $responseTime = round(($endTime - $startTime) * 1000);
-            $errorMessage = 'Request failed: ' . $e->getMessage();
             $status = 'down';
+            $errorMessage = 'Request failed: ' . $e->getMessage();
 
-            Log::warning("Website is DOWN - Request error", [
+            Log::error("Website DOWN - RequestException", [
                 'website_id' => $website->id,
-                'error_message' => $errorMessage
+                'error_message' => $errorMessage,
             ]);
-
             $this->handleDowntimeNotification($website, $errorMessage);
         } catch (\Exception $e) {
             $endTime = microtime(true);
             $responseTime = round(($endTime - $startTime) * 1000);
-            $errorMessage = 'Unknown error: ' . $e->getMessage();
             $status = 'down';
+            $errorMessage = 'Unknown error: ' . $e->getMessage();
 
-            Log::error("Website is DOWN - Unknown error", [
+            Log::error("Website DOWN - General Exception", [
                 'website_id' => $website->id,
                 'error_message' => $errorMessage,
-                'exception_trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-
             $this->handleDowntimeNotification($website, $errorMessage);
         }
 
-        // Update website status and last checked time using app timezone
-        $website->update([
-            'status' => $status,
-            'last_checked_at' => $checkedAt
-        ]);
+        // 🚨 Update website record
+        try {
+            $website->update([
+                'status' => $status,
+                'last_checked_at' => $checkedAt,
+            ]);
 
-        // Clean up old checks periodically
-        $this->cleanupOldChecks($website);
+            Log::info("Website record updated", [
+                'website_id' => $website->id,
+                'status' => $status,
+                'last_checked_at' => $checkedAt->toDateTimeString(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to update website record", [
+                'website_id' => $website->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
 
-        // Create uptime check record with same timestamp
-        $uptimeCheck = UptimeCheck::create([
-            'website_id' => $website->id,
-            'status' => $status,
-            'response_time' => $responseTime,
-            'status_code' => $statusCode,
-            'error_message' => $errorMessage,
-            'checked_at' => $checkedAt, // Same timestamp as website's last_checked_at
-        ]);
+        // 🚨 Create uptime check record
+        try {
+            Log::info("Creating uptime check record...", [
+                'website_id' => $website->id,
+                'status' => $status,
+                'response_time' => $responseTime,
+                'status_code' => $statusCode,
+                'error_message' => $errorMessage,
+                'checked_at' => $checkedAt->toDateTimeString(),
+            ]);
 
-        Log::info("Website check completed", [
+            $uptimeCheck = UptimeCheck::create([
+                'website_id' => $website->id,
+                'status' => $status,
+                'response_time' => $responseTime,
+                'status_code' => $statusCode,
+                'error_message' => $errorMessage,
+                'checked_at' => $checkedAt,
+            ]);
+
+            Log::info("Uptime check created successfully", [
+                'uptime_check_id' => $uptimeCheck->id ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to create uptime check record", [
+                'website_id' => $website->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        Log::info("===== Website check completed =====", [
             'website_id' => $website->id,
             'final_status' => $status,
             'response_time_ms' => $responseTime,
             'status_code' => $statusCode,
-            'uptime_check_id' => $uptimeCheck->id,
-            'timestamp_local' => $checkedAt->toDateTimeString(),
-            'timezone' => $appTimezone
         ]);
 
         return [
@@ -279,9 +293,10 @@ class UptimeMonitorService
             'response_time' => $responseTime,
             'status_code' => $statusCode,
             'error_message' => $errorMessage,
-            'checked_at' => $checkedAt->toISOString()
+            'checked_at' => $checkedAt->toISOString(),
         ];
     }
+
 
     /**
      * Handle downtime notifications
